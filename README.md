@@ -21,7 +21,9 @@ También puede alojarse como web estática en HTTPS, conservando la estructura d
 
 ## Uso
 
-- **Habitaciones**: a la izquierda los planos (arquitectónico, eléctrico, hidráulico y federado) y a la derecha las tarjetas de las habitaciones. Cada plano se sube como imagen o PDF (hasta 40 MB), se guarda en este dispositivo y se puede ampliar, descargar o cambiar. El arquitectónico suministrado viene cargado.
+- **Habitaciones → Tarjetas**: las tarjetas de cada habitación con responsables, proceso y estado.
+- **Habitaciones → Planos**: tarjetas del plano arquitectónico, eléctrico, hidráulico y federado. Cada uno se sube como imagen o PDF (hasta 40 MB), se guarda en este dispositivo y se abre en grande con «Ver plano». El arquitectónico suministrado viene cargado.
+- La aplicación siempre abre en **Inicio**.
 
 - **Procesos propios**: en «Proceso de obra», abre la lista y usa «+ Agregar proceso». Los procesos agregados se pueden quitar con × si ninguna habitación o foto los usa.
 

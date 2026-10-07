@@ -85,14 +85,16 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], inicio:['Inicio', 'Objetivo del día y entregas de la obra.', 'Inicio'], habitaciones:['Habitaciones', 'Asigna responsables y procesos, y documenta el avance de cada espacio.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planos de la obra', 'Arquitectónico, eléctrico, hidráulico y federado.', 'Planos']};
+  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], inicio:['Inicio', 'Objetivo del día y entregas de la obra.', 'Inicio'], habitaciones:['Habitaciones', 'Asigna responsables y procesos, y documenta el avance de cada espacio.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], planos:['Planos', 'Arquitectónico, eléctrico, hidráulico y federado.', 'Planos'], plano:['Planos', 'Arquitectónico, eléctrico, hidráulico y federado.', 'Planos']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
-  $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
-  $('#overview').hidden = ['plano','tareas','materiales','reportes','inicio','habitaciones'].includes(next);
-  $('#heading-action').hidden = next === 'plano' || next === 'reportes';
+  $('#rooms-toggle').classList.toggle('active', ['habitaciones','planos','plano'].includes(next));
+  if (['habitaciones','planos','plano'].includes(next)) $('#rooms-group').classList.add('open');
+  document.querySelectorAll('.sub-item[data-view]').forEach(b => b.classList.toggle('selected', b.dataset.view === next || (next === 'plano' && b.dataset.view === 'planos')));
+  $('#overview').hidden = ['plano','planos','tareas','materiales','reportes','inicio','habitaciones'].includes(next);
+  $('#heading-action').hidden = ['plano','planos','reportes'].includes(next);
   $('#heading-action').lastChild.textContent = {inicio:'Nueva entrega', tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
   $('#materials-toggle').classList.toggle('active', next === 'materiales');
   if (next === 'materiales') $('#materials-group').classList.add('open');
@@ -192,7 +194,6 @@ function filteredTasks() {
   return sortTasks(scopedTasks().filter(t => (status === 'all' || t.status === status) && (priority === 'all' || t.priority === priority) && normalize([t.title, t.notes, state.rooms.find(r => r.id === t.roomId)?.number, workerName(t.workerId)].join(' ')).includes(q)));
 }
 function renderTasks() {
-  document.querySelectorAll('.sub-item[data-room-mode]').forEach(b => b.classList.toggle('selected', view === 'habitaciones' && b.dataset.roomMode === roomMode));
   const open = state.tasks.filter(t => t.status !== 'Completada').length;
   $('#nav-task-count').textContent = open;
   document.querySelectorAll('[data-task-scope]').forEach(b => b.classList.toggle('selected', view === 'tareas' && b.dataset.taskScope === taskScope));
@@ -578,7 +579,8 @@ async function planSource(key) {
   const url = URL.createObjectURL(blob); planUrls.set(key, {url, at: meta.updatedAt}); return {url, ...meta};
 }
 async function renderPlans() {
-  const targets = view === 'habitaciones' ? [['habitaciones', $('#rooms-plan')]] : view === 'plano' ? [['plano', $('#full-plan')]] : [];
+  if (view === 'planos') return renderPlanCards();
+  const targets = view === 'plano' ? [['plano', $('#full-plan')]] : [];
   for (const [where, box] of targets) {
     const key = planTabs[where], label = planTypes.find(p => p[0] === key)[1], large = where === 'plano';
     const sig = `${key}|${state.plans[key]?.updatedAt || ''}|${planZoom}|${Object.keys(state.plans).join()}`;
@@ -589,9 +591,10 @@ async function renderPlans() {
     const media = !src ? `<div class="plan-empty"><div class="empty-icon">${icon('plan')}</div><h3>Plano ${e(label.toLowerCase())}</h3><p>Aún no has cargado este plano. Sube una imagen (JPG, PNG o WebP) o un PDF.</p><label class="button primary">${icon('upload')}Subir plano<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label></div>`
       : src.mime === 'application/pdf' ? `<iframe class="plan-pdf" src="${src.url}#view=FitH" title="Plano ${e(label)}"></iframe>`
       : `<img class="plan-img ${large && planZoom ? 'zoomed' : ''}" src="${src.url}" alt="Plano ${e(label)}" ${large ? 'data-plan-zoom' : 'data-plan-open'}>`;
-    box.innerHTML = `<div class="plan-head"><div><h2>${large ? 'Planos de la obra' : 'Planos'}</h2><p class="panel-sub">${src ? e(src.supplied ? 'Plano suministrado, sin modificaciones.' : `${src.name} · actualizado ${dateLabel(src.updatedAt)}`) : 'Sin cargar'}</p></div>${src ? `<div class="plan-actions">${!large ? `<button class="small-btn" data-plan-open>${icon('expand')}Ampliar</button>` : src.mime !== 'application/pdf' ? `<button class="small-btn" data-plan-zoom>${icon('zoom')}${planZoom ? 'Ajustar' : 'Acercar'}</button>` : ''}<a class="small-btn" href="${src.url}" download="${e(src.name)}">${icon('download')}Descargar</a><label class="small-btn">${icon('upload')}${src.supplied ? 'Reemplazar' : 'Cambiar'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label>${!src.supplied ? `<button class="small-btn" data-plan-remove="${key}">${icon('trash')}</button>` : ''}</div>` : ''}</div>
+    box.innerHTML = `<div class="plan-head"><div><button class="text-button plan-back" data-plan-back>← Todos los planos</button><h2>Plano ${e(label.toLowerCase())}</h2><p class="panel-sub">${src ? e(src.supplied ? 'Plano suministrado, sin modificaciones.' : `${src.name} · actualizado ${dateLabel(src.updatedAt)}`) : 'Sin cargar'}</p></div>${src ? `<div class="plan-actions">${!large ? `<button class="small-btn" data-plan-open>${icon('expand')}Ampliar</button>` : src.mime !== 'application/pdf' ? `<button class="small-btn" data-plan-zoom>${icon('zoom')}${planZoom ? 'Ajustar' : 'Acercar'}</button>` : ''}<a class="small-btn" href="${src.url}" download="${e(src.name)}">${icon('download')}Descargar</a><label class="small-btn">${icon('upload')}${src.supplied ? 'Reemplazar' : 'Cambiar'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label>${!src.supplied ? `<button class="small-btn" data-plan-remove="${key}">${icon('trash')}</button>` : ''}</div>` : ''}</div>
       <div class="segmented plan-tabs" role="tablist" aria-label="Tipo de plano">${planTypes.map(([k, l]) => `<button role="tab" aria-selected="${k === key}" class="${k === key ? 'selected' : ''}" data-plan-tab="${k}">${e(l)}${state.plans[k] || k === 'arq' ? '' : '<i class="plan-dot" title="Sin cargar"></i>'}</button>`).join('')}</div>
       <div class="plan-stage ${large && planZoom ? 'zoom' : ''}">${media}</div>`;
+    box.querySelectorAll('[data-plan-back]').forEach(b => b.onclick = () => setView('planos'));
     box.querySelectorAll('[data-plan-tab]').forEach(b => b.onclick = () => { planTabs[where] = b.dataset.planTab; planZoom = false; renderPlans(); });
     box.querySelectorAll('[data-plan-open]').forEach(b => b.onclick = () => { planTabs.plano = key; setView('plano'); });
     box.querySelectorAll('[data-plan-zoom]').forEach(b => b.onclick = () => { planZoom = !planZoom; renderPlans(); });
@@ -601,6 +604,18 @@ async function renderPlans() {
       const k = b.dataset.planRemove; delete state.plans[k]; persist(); blobStore(`plan:${k}`, 'delete').catch(() => {}); const u = planUrls.get(k); if (u) URL.revokeObjectURL(u.url); planUrls.delete(k); renderPlans(); toast('Plano retirado.');
     });
   }
+}
+
+async function renderPlanCards() {
+  const box = $('#plan-cards');
+  const sig = JSON.stringify(state.plans);
+  if (box.dataset.sig === sig && box.children.length) return;
+  box.dataset.sig = sig;
+  const items = await Promise.all(planTypes.map(async ([key, label]) => ({key, label, src: await planSource(key).catch(() => null)})));
+  if (view !== 'planos') return;
+  box.innerHTML = items.map(({key, label, src}) => `<article class="plan-card-item ${src ? '' : 'empty'}"><button class="plan-thumb-btn" ${src ? `data-plan-view="${key}"` : ''} aria-label="${src ? 'Ver' : 'Sin cargar'}: plano ${e(label.toLowerCase())}">${!src ? `<span class="plan-thumb-empty">${icon('plan')}<small>Sin cargar</small></span>` : src.mime === 'application/pdf' ? `<span class="plan-thumb-empty pdf">${icon('room')}<small>PDF</small></span>` : `<img src="${src.url}" alt="">`}</button><div class="plan-card-body"><div><h3>Plano ${e(label.toLowerCase())}</h3><p>${src ? e(src.supplied ? 'Plano suministrado' : `${src.name} · ${dateLabel(src.updatedAt)}`) : 'Sube una imagen o un PDF'}</p></div><span class="badge ${src ? 'active' : 'pending'}">${src ? 'Cargado' : 'Pendiente'}</span></div><div class="plan-card-actions">${src ? `<button class="small-btn indigo" data-plan-view="${key}">${icon('expand')}Ver plano</button>` : ''}<label class="small-btn">${icon('upload')}${src ? 'Cambiar' : 'Subir plano'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label></div></article>`).join('');
+  box.querySelectorAll('[data-plan-view]').forEach(b => b.onclick = () => { planTabs.plano = b.dataset.planView; planZoom = false; $('#full-plan').dataset.sig = ''; setView('plano'); });
+  box.querySelectorAll('[data-plan-upload]').forEach(input => input.onchange = () => uploadPlan(input.dataset.planUpload, input.files[0]).then(() => { box.dataset.sig = ''; renderPlanCards(); }).catch(errorToast));
 }
 async function uploadPlan(key, file) {
   if (!file) return;
@@ -843,6 +858,7 @@ document.querySelectorAll('[data-add-action]').forEach(button => button.onclick 
   else toast('Primero crea una habitación para registrar sus fotos.');
 });
 $('#rooms-toggle').onclick = () => {
+  if (!['habitaciones','planos','plano'].includes(view)) { setRoomMode('cards'); setView('habitaciones'); return; }
   const group = $('#rooms-group');
   if (view !== 'habitaciones') { group.classList.add('open'); setView('habitaciones'); }
   else group.classList.toggle('open');
@@ -902,4 +918,4 @@ $('#export-button').onclick = () => {
   toast('Respaldo de habitaciones y metadatos exportado. Las fotos pendientes permanecen en este dispositivo.');
 };
 setInterval(() => { if (!drive.connected && $('#drive-button').classList.contains('connected')) render(); }, 30000);
-setView(['inicio','habitaciones','tareas','materiales','reportes','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'inicio');
+setView('inicio');
