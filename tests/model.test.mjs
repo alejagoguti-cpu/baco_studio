@@ -35,6 +35,11 @@ test('validates tasks against real rooms and workers', () => {
   assert.throws(() => validateTask({...task,date:''},[room],workers));
   assert.throws(() => validateTask({...task,roomId:'x'},[room],workers));
   assert.throws(() => validateTask({...task,workerId:'x'},[room],workers));
+  assert.throws(() => validateTask({...task,workerIds:['a','x']},[room],workers));
+  const multi = validateTask({...task,workerId:undefined,workerIds:['a','b','a']},[room],workers);
+  assert.deepEqual(multi.workerIds, ['a','b']);
+  assert.deepEqual(validateTask(task,[room],workers).workerIds, ['a']);
+  assert.equal('workerId' in validateTask(task,[room],workers), false);
   assert.doesNotThrow(() => validateTask({...task,roomId:'',workerId:'',time:''},[],workers));
 });
 test('sorts open tasks by deadline before completed ones', () => {
