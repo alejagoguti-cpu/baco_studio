@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { frontendApi } from '../auth.mjs';
+test('clave pública de Clerk apunta a su dominio', () => { assert.equal(frontendApi('pk_test_ZW5vdWdoLWJveGVyLTY4MjcuY2xlcmsuYWNjb3VudHMuZGV2JA'), 'enough-boxer-6827.clerk.accounts.dev'); });
 import assert from 'node:assert/strict';
 import {validateRoom,validatePhoto,filterRooms,escapeHTML,safeDriveLink} from '../model.mjs';
 const workers = [{id:'a',name:'Luis Vásquez'},{id:'b',name:'Nicol Castiblanco'}];
