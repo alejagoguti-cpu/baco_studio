@@ -88,3 +88,20 @@ test('adds custom processes without duplicates and accepts them in rooms', () =>
   assert.throws(() => validateRoom({...room,process:'Cielo raso'},[],workers));
   assert.equal(validateRoom({...room,process:'Cielo raso'},[],workers,['Cielo raso']).process,'Cielo raso');
 });
+
+test('bitácora diaria: una actividad por día y la más reciente manda', async () => {
+  const { validateActivity, upsertActivity, activityOn, lastActivity, processes } = await import('../model.mjs');
+  const ws = [{id:'w1'}, {id:'w2'}];
+  assert.throws(() => validateActivity({date:'2026-10-07', activity:'Inventada', workers:['w1']}, ws, processes), /actividad/);
+  assert.throws(() => validateActivity({date:'2026-10-07', activity:'Mampostería', workers:[]}, ws, processes), /al menos una/);
+  const a = validateActivity({date:'2026-10-06', activity:'Mampostería', workers:['w1','w1']}, ws, processes);
+  assert.deepEqual(a.workers, ['w1']);
+  let log = upsertActivity([], a);
+  log = upsertActivity(log, validateActivity({date:'2026-10-07', activity:'Pisos y enchapes', workers:['w1','w2']}, ws, processes));
+  log = upsertActivity(log, validateActivity({date:'2026-10-07', activity:'Pintura y acabados', workers:['w2']}, ws, processes));
+  assert.equal(log.length, 2);
+  assert.equal(log[0].activity, 'Pintura y acabados');
+  assert.equal(activityOn({log}, '2026-10-06').activity, 'Mampostería');
+  assert.equal(lastActivity({log}, '2026-10-06').date, '2026-10-06');
+  assert.equal(activityOn({log}, '2026-10-08'), null);
+});
