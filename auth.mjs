@@ -59,6 +59,7 @@ function showUser(user) {
   document.querySelectorAll('[data-user-photo]').forEach(img => { if (user.imageUrl) { img.src = user.imageUrl; img.alt = name; } });
 }
 
+export const appHome = () => location.origin + location.pathname.replace(/[^/]*$/, '');
 export const getToken = async () => window.Clerk?.session ? window.Clerk.session.getToken() : null;
 export const currentEmail = () => window.Clerk?.user?.primaryEmailAddress?.emailAddress || '';
 
@@ -66,20 +67,22 @@ export async function initAuth({ onUser } = {}) {
   let lastUser = null;
   const gate = document.getElementById('auth-gate'), box = document.getElementById('clerk-sign-in'), msg = document.getElementById('auth-message');
   const lock = () => { document.body.classList.add('auth-locked'); gate.hidden = false; };
-  const unlock = user => { document.body.classList.remove('auth-locked'); gate.hidden = true; showUser(user); if (lastUser !== user.id) { lastUser = user.id; onUser?.(user); } };
+  const unlock = user => { if (location.hash.startsWith('#/')) history.replaceState(null, '', '#inicio'); document.body.classList.remove('auth-locked'); gate.hidden = true; showUser(user); if (lastUser !== user.id) { lastUser = user.id; onUser?.(user); } };
   lock();
   try {
     await Promise.race([loadScript(frontendApi(CLERK_PUBLISHABLE_KEY)), new Promise((_, r) => setTimeout(() => r(new Error('El inicio de sesión tardó demasiado. Revisa tu conexión y recarga.')), 15000))]);
-    await window.Clerk.load({ appearance, localization });
+    // La app vive en /baco_studio/: todas las vueltas de Clerk deben regresar aquí (no a la raíz, que da 404).
+    const home = appHome();
+    await window.Clerk.load({ appearance, localization, signInUrl: home, signUpUrl: home, afterSignOutUrl: home, signInFallbackRedirectUrl: home, signUpFallbackRedirectUrl: home, signInForceRedirectUrl: home, signUpForceRedirectUrl: home });
     msg.hidden = true;
     let mounted = false;
     const sync = () => {
       const user = window.Clerk.user;
       if (user) { if (mounted) { window.Clerk.unmountSignIn(box); mounted = false; } unlock(user); }
-      else { lock(); if (!mounted) { window.Clerk.mountSignIn(box, { appearance }); mounted = true; } }
+      else { lock(); if (!mounted) { window.Clerk.mountSignIn(box, { appearance, routing: 'hash', fallbackRedirectUrl: home, forceRedirectUrl: home, signUpFallbackRedirectUrl: home, signUpForceRedirectUrl: home }); mounted = true; } }
     };
     window.Clerk.addListener(sync); sync();
-    document.querySelectorAll('[data-sign-out]').forEach(b => b.onclick = () => window.Clerk.signOut());
+    document.querySelectorAll('[data-sign-out]').forEach(b => b.onclick = () => window.Clerk.signOut({ redirectUrl: home }));
   } catch (error) {
     msg.hidden = false; msg.textContent = error.message || 'No se pudo iniciar sesión.';
   }

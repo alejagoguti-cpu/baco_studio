@@ -1,9 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007n';
-import { Drive } from './drive.mjs?v=20261007n';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007n';
-import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007n';
-import { createSync } from './sync.mjs?v=20261007n';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007n';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007o';
+import { Drive } from './drive.mjs?v=20261007o';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007o';
+import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007o';
+import { createSync } from './sync.mjs?v=20261007o';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007o';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -112,7 +112,7 @@ function setView(next) {
   $('#materials-toggle').classList.toggle('active', next === 'materiales');
   $('#tasks-toggle').classList.toggle('active', next === 'tareas');
   if (next === 'tareas') $('#tasks-group').classList.add('open');
-  history.replaceState(null, '', `#${next}`);
+  if (!location.hash.startsWith('#/')) history.replaceState(null, '', `#${next}`); // «#/…» es de la ventana de inicio de sesión
   document.body.dataset.view = next;
   closeNav();
   render();
