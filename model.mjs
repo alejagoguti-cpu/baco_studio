@@ -112,3 +112,12 @@ export function upsertActivity(log, entry) {
 }
 export const activityOn = (room, date) => (room.log || []).find(x => x.date === date) || null;
 export const lastActivity = (room, upTo) => (room.log || []).filter(x => x.date <= upTo).sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+export const roles = ['Maestro', 'Oficial', 'Ayudante', 'Electricista', 'Plomero', 'Pintor', 'Enchapador'];
+export function validateRoleName(name, existing) {
+  const clean = String(name ?? '').trim().replace(/\s+/g, ' ');
+  if (clean.length < 3) throw new Error('Escribe el oficio (mínimo 3 letras).');
+  if (clean.length > 40) throw new Error('El oficio debe tener máximo 40 caracteres.');
+  const norm = v => v.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  if (existing.some(p => norm(p) === norm(clean))) throw new Error('Ese oficio ya existe.');
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}

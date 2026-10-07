@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007e';
-import { Drive } from './drive.mjs?v=20261007e';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007e';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007e';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007f';
+import { Drive } from './drive.mjs?v=20261007f';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007f';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007f';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -10,7 +10,7 @@ const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; state.plans ||= {}; }
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; state.customRoles ||= []; state.customUnits ||= []; state.plans ||= {}; }
 ensureState();
 let workers = [];
 function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
@@ -27,6 +27,11 @@ let syncing = false;
 let uploadBusy = false;
 const urls = new Map();
 const allProcesses = () => [...processes, ...state.customProcesses];
+const baseUnits = ['und', 'bultos', 'm²', 'm', 'kg', 'galones', 'cajas', 'rollos', 'láminas'];
+const allUnits = () => [...baseUnits, ...state.customUnits];
+const unitOptions = selected => `<option value="">Seleccionar unidad</option>` + [...allUnits(), ...(selected && !allUnits().includes(selected) ? [selected] : [])].map(u => `<option value="${e(u)}" ${u === selected ? 'selected' : ''}>${e(u)}</option>`).join('');
+const allRoles = () => [...roles, ...state.customRoles];
+const roleOptions = selected => `<option value="">Seleccionar oficio</option>` + [...allRoles(), ...(selected && !allRoles().includes(selected) ? [selected] : [])].map(r => `<option value="${e(r)}" ${r === selected ? 'selected' : ''}>${e(r)}</option>`).join('');
 const worker = id => workers.find(w => w.id === id) || state.workerArchive[id];
 const initials = name => String(name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
 const photoOf = w => w?.photo || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='#f1ede9'/><text x='32' y='40' font-family='Arial' font-size='24' font-weight='700' fill='#6e655e' text-anchor='middle'>${initials(w?.name).replace(/[<&]/g, '')}</text></svg>`)}`;
@@ -278,8 +283,8 @@ function editWorker(id) {
   $('#worker-dialog').querySelector('.dialog-feedback')?.remove();
   const form = $('#worker-form'); form.reset();
   $('#worker-form-title').textContent = w ? 'Editar trabajador' : 'Agregar trabajador';
-  for (const key of ['id','name','role','phone']) form.elements[key].value = w?.[key] || '';
-  if (w?.role === 'Personal de obra') form.elements.role.value = '';
+  for (const key of ['id','name','phone']) form.elements[key].value = w?.[key] || '';
+  form.elements.role.innerHTML = roleOptions(w?.role === 'Personal de obra' ? '' : w?.role || '');
   setWorkerPhoto(w?.photo || '', w?.name);
   $('#worker-delete').hidden = !w; $('#worker-delete').dataset.confirm = ''; $('#worker-delete').textContent = 'Eliminar';
   $('#worker-dialog').showModal();
@@ -382,7 +387,8 @@ function editMaterial(id) {
   form.elements.roomId.innerHTML = '<option value="">General / sin habitación</option>' + [...state.rooms].sort((a, b) => a.number.localeCompare(b.number, 'es', {numeric:true})).map(r => `<option value="${e(r.id)}">Hab. ${e(r.number)} · ${e(r.level)}</option>`).join('');
   form.elements.requestedBy.innerHTML = '<option value="">Sin especificar</option>' + workers.map(w => `<option value="${w.id}">${e(w.name)}</option>`).join('');
   const values = m || {id:'', name:'', quantity:'', unit:'', orderStatus:'Por pedir', date: today(), requestedBy: materialRequester !== 'all' ? materialRequester : '', roomId: activeRoom && $('#detail-dialog').open ? activeRoom : '', supplier:'', total:'', paid:'', notes:''};
-  for (const key of ['id','name','quantity','unit','orderStatus','date','requestedBy','roomId','supplier','total','paid','notes']) form.elements[key].value = values[key] ?? '';
+  form.elements.unit.innerHTML = unitOptions(values.unit || '');
+  for (const key of ['id','name','quantity','orderStatus','date','requestedBy','roomId','supplier','total','paid','notes']) form.elements[key].value = values[key] ?? '';
   if (m) { form.elements.total.value = m.total ? m.total.toLocaleString('es-CO') : ''; form.elements.paid.value = m.paid ? m.paid.toLocaleString('es-CO') : ''; }
   updateBalanceHint();
   $('#material-delete').hidden = !m; $('#material-delete').dataset.confirm = ''; $('#material-delete').textContent = 'Eliminar';
@@ -571,7 +577,36 @@ function removeProcess(name) {
   document.querySelectorAll('select[name="process"]').forEach(sel => { const v = sel.value === name ? processes[0] : sel.value; sel.innerHTML = options(allProcesses(), v); });
   return '';
 }
-const selectConfig = select => select.name === 'process' ? {onAdd: addProcess, addLabel: 'Agregar proceso', addPlaceholder: 'Ej. Instalación de cielo raso', onRemove: removeProcess, removable: v => state.customProcesses.includes(v)} : {};
+function addRole(name) {
+  const clean = validateRoleName(name, allRoles());
+  state.customRoles.push(clean); persist();
+  const sel = $('#worker-form').elements.role; sel.innerHTML = roleOptions(sel.value);
+  toast(`Oficio «${clean}» agregado.`);
+  return clean;
+}
+function removeRole(name) {
+  if (workers.some(w => w.role === name)) return 'No se puede eliminar: hay trabajadores con este oficio.';
+  state.customRoles = state.customRoles.filter(r => r !== name); persist();
+  const sel = $('#worker-form').elements.role; sel.innerHTML = roleOptions(sel.value === name ? '' : sel.value);
+  return '';
+}
+function addUnit(name) {
+  const clean = String(name ?? '').trim().replace(/\s+/g, ' ');
+  if (!clean) throw new Error('Escribe la unidad.');
+  if (clean.length > 20) throw new Error('La unidad debe tener máximo 20 caracteres.');
+  if (allUnits().some(u => u.toLowerCase() === clean.toLowerCase())) throw new Error('Esa unidad ya existe.');
+  state.customUnits.push(clean); persist();
+  const sel = $('#material-form').elements.unit; sel.innerHTML = unitOptions(sel.value);
+  toast(`Unidad «${clean}» agregada.`);
+  return clean;
+}
+function removeUnit(name) {
+  if (state.materials.some(m => m.unit === name)) return 'No se puede eliminar: hay pedidos con esta unidad.';
+  state.customUnits = state.customUnits.filter(u => u !== name); persist();
+  const sel = $('#material-form').elements.unit; sel.innerHTML = unitOptions(sel.value === name ? '' : sel.value);
+  return '';
+}
+const selectConfig = select => select.name === 'unit' ? {onAdd: addUnit, addLabel: 'Agregar unidad', addPlaceholder: 'Ej. metros cúbicos', onRemove: removeUnit, removable: v => state.customUnits.includes(v)} : select.name === 'role' ? {onAdd: addRole, addLabel: 'Agregar oficio', addPlaceholder: 'Ej. Carpintero', onRemove: removeRole, removable: v => state.customRoles.includes(v)} : select.name === 'process' ? {onAdd: addProcess, addLabel: 'Agregar proceso', addPlaceholder: 'Ej. Instalación de cielo raso', onRemove: removeProcess, removable: v => state.customProcesses.includes(v)} : {};
 const enhance = root => enhanceSelects(root, selectConfig);
 
 // ---------- Planos ----------
