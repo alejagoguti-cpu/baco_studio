@@ -52,51 +52,109 @@ async function blobStore(id, action, value) {
     transaction.onerror = () => reject(new Error('No hay espacio suficiente para guardar esta foto.'));
   });
 }
+const icon = id => `<svg><use href="#i-${id}"/></svg>`;
+const statusIcon = {pending:'clock', active:'sync', review:'eye', done:'check'};
+const selected = new Set();
+const pad = n => String(n).padStart(2, '0');
+function bars(container, values) {
+  const max = Math.max(...values, 0);
+  container.innerHTML = values.map(v => `<span class="${v ? '' : 'zero'}" style="height:${max ? Math.max(12, v / max * 100) : 12}%"></span>`).join('');
+}
+function setRoomMode(mode) {
+  roomMode = mode;
+  document.querySelectorAll('[data-room-mode]').forEach(b => b.classList.toggle('selected', b.dataset.roomMode === mode));
+  if (mode !== 'list') selected.clear();
+}
+function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Personal, asignaciones y habitaciones a su cargo.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
+  $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
   $('#overview').hidden = next === 'plano';
+  $('#heading-action').hidden = next === 'plano';
   history.replaceState(null, '', `#${next}`);
+  closeNav();
   render();
 }
 function avatar(id, extra = '') { const w = worker(id); return w ? `<img class="avatar ${extra}" src="${w.photo}" alt="${e(w.name)}" loading="lazy">` : ''; }
 function render() {
-  $('#stat-rooms').textContent = String(state.rooms.length).padStart(2, '0');
-  $('#stat-active').textContent = String(state.rooms.filter(r => r.status === 'En proceso').length).padStart(2, '0');
-  $('#stat-photos').textContent = String(state.records.filter(r => !r.pending).length).padStart(2, '0');
-  $('#stat-photo-caption').textContent = state.records.some(r => r.pending) ? `${state.records.filter(r => r.pending).length} fotos pendientes de subir` : drive.connected ? 'Fotos consultadas en este proyecto' : 'Conecta Drive para consultar';
-  $('#nav-count').textContent = state.rooms.length;
+  const total = state.rooms.length;
+  const countBy = status => state.rooms.filter(r => r.status === status).length;
+  const uploaded = state.records.filter(r => !r.pending);
+  const pendingPhotos = state.records.filter(r => r.pending).length;
+  $('#stat-rooms').textContent = pad(total);
+  $('#stat-active').textContent = pad(countBy('En proceso'));
+  $('#stat-photos').textContent = pad(uploaded.length);
+  bars($('#bars-rooms'), statuses.map(countBy));
+  bars($('#bars-process'), processes.map(p => state.rooms.filter(r => r.process === p && r.status !== 'Finalizada').length));
+  bars($('#bars-photos'), processes.map(p => uploaded.filter(r => r.process === p).length));
+  $('#stat-photo-caption').textContent = pendingPhotos ? `${pendingPhotos} fotos pendientes de subir` : drive.connected ? 'Fotos consultadas en este proyecto' : 'Conecta Drive para consultar';
+  const clock = [countBy('Pendiente'), countBy('En proceso'), countBy('Finalizada')];
+  $('#status-clock').innerHTML = clock.map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
+  const review = countBy('En revisión');
+  $('#clock-tag').textContent = !total ? 'Sin registros' : review ? `${review} en revisión` : 'Al día';
+  $('#clock-tag').classList.toggle('ok', !!total && !review);
+  $('#done-percent').textContent = `${total ? Math.round(countBy('Finalizada') / total * 100) : 0}%`;
+  $('#done-date').textContent = dateLabel(new Date().toISOString());
+  const progress = total ? Math.round(state.rooms.reduce((sum, r) => sum + statuses.indexOf(r.status), 0) / (total * (statuses.length - 1)) * 100) : 0;
+  $('#rail-percent').textContent = `${progress}%`;
+  $('#rail-note').textContent = total ? `Avance promedio por etapa en ${total} ${total === 1 ? 'habitación' : 'habitaciones'}.` : 'Sin habitaciones registradas.';
+  $('#pending-pill').hidden = !pendingPhotos; $('#pending-pill').textContent = `${pendingPhotos} pendientes`;
+  $('#nav-count').textContent = total;
   $('#drive-status').textContent = drive.connected ? 'Drive conectado' : 'Conectar Drive';
   $('#drive-button').classList.toggle('connected', drive.connected);
+
   const rooms = filterRooms(state.rooms, $('#search').value, $('#status-filter').value, workers);
-  $('#room-grid').innerHTML = rooms.length ? rooms.map(room => {
-    const records = state.records.filter(r => r.roomId === room.id);
-    return `<button class="room-card" data-room="${e(room.id)}"><div class="room-card-top"><span class="room-sector">${e(room.level)}</span><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-number"><small>HABITACIÓN</small><strong>${e(room.number)}</strong><span>↗</span></div><div class="room-process"><span class="process-dot"></span>${e(room.process)}</div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i <= statuses.indexOf(room.status) ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div><div class="room-workers">${room.workers.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><span>▧ ${records.filter(r => !r.pending).length} fotos en Drive</span><span>${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div></button>`;
-  }).join('') : `<div class="empty-state"><div class="empty-icon">⌑</div><h3>${state.rooms.length ? 'No encontramos coincidencias' : 'Tu primera habitación, el primer paso.'}</h3><p>${state.rooms.length ? 'Prueba otro número, responsable o estado.' : 'Registra el espacio y asigna a los dos maestros encargados. La numeración la defines tú.'}</p>${state.rooms.length ? '' : '<button class="button primary" id="empty-new-room">＋ Crear habitación</button>'}</div>`;
-  $('#empty-new-room')?.addEventListener('click', () => editRoom());
-  document.querySelectorAll('[data-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.room)));
-  if (rooms.length && roomMode === 'list') {
-    $('#room-grid').innerHTML = `<div class="room-table-wrap"><table class="room-table"><thead><tr><th>Habitación</th><th>Proceso</th><th>Responsables</th><th>Estado</th><th></th></tr></thead><tbody>${rooms.map(room => `<tr><td><strong>${e(room.number)}</strong><small>${e(room.level)}</small></td><td>${e(room.process)}</td><td><div class="table-avatars">${room.workers.map(id => avatar(id)).join('')}</div><small>${room.workers.map(id => e(workerName(id))).join('<br>')}</small></td><td><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></td><td><button class="text-button" data-list-room="${e(room.id)}">Ver ↗</button></td></tr>`).join('')}</tbody></table></div>`;
-  }
-  if (rooms.length && roomMode === 'sectors') {
+  $('#rooms-count').textContent = rooms.length;
+  $('#rooms-sub').textContent = roomMode === 'sectors' ? 'Mapa de habitaciones agrupadas por piso o sector.' : roomMode === 'list' ? `Mostrando ${rooms.length} de ${total} habitaciones.` : 'Asignaciones y estado de cada espacio.';
+  for (const id of [...selected]) if (!rooms.some(r => r.id === id)) selected.delete(id);
+  const grid = $('#room-grid');
+  if (!rooms.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('room')}</div><h3>${total ? 'No encontramos coincidencias' : 'Tu primera habitación, el primer paso.'}</h3><p>${total ? 'Prueba otro número, responsable o estado.' : 'Registra el espacio y asigna a los dos maestros encargados. La numeración la defines tú.'}</p>${total ? '' : `<button class="button primary" id="empty-new-room">${icon('plus')}Crear habitación</button>`}</div>`;
+    $('#empty-new-room')?.addEventListener('click', () => editRoom());
+  } else if (roomMode === 'list') {
+    const all = rooms.every(r => selected.has(r.id));
+    grid.innerHTML = `<div class="room-table-wrap"><table class="room-table"><thead><tr><th><input type="checkbox" class="check" id="check-all" aria-label="Seleccionar todas" ${all ? 'checked' : ''}></th><th>Habitación</th><th>Proceso</th><th>Responsables</th><th>Estado</th><th>Drive</th><th>Fotos</th><th></th></tr></thead><tbody>${rooms.map(room => {
+      const cls = statusClass(room.status); const photos = state.records.filter(r => r.roomId === room.id && !r.pending).length;
+      return `<tr class="${selected.has(room.id) ? 'checked' : ''}"><td><input type="checkbox" class="check" data-select="${e(room.id)}" aria-label="Seleccionar habitación ${e(room.number)}" ${selected.has(room.id) ? 'checked' : ''}></td><td><strong>${e(room.number)}</strong><small>${e(room.level)}</small></td><td>${e(room.process)}</td><td><div class="table-avatars">${room.workers.map(id => avatar(id)).join('')}</div><small>${room.workers.map(id => e(workerName(id))).join('<br>')}</small></td><td><span class="status-cell"><span class="status-icon ${cls}">${icon(statusIcon[cls])}</span>${e(room.status)}</span></td><td><span class="prio ${room.dirty ? 'n2' : 'n3'}">${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></td><td>${photos}</td><td><button class="small-btn" data-list-room="${e(room.id)}">Ver ${icon('arrow')}</button></td></tr>`;
+    }).join('')}</tbody></table></div><div class="table-foot"><span>Mostrando ${rooms.length} de ${total} habitaciones</span><span>${selected.size} seleccionadas</span></div>`;
+    const checkAll = $('#check-all'); checkAll.indeterminate = !all && rooms.some(r => selected.has(r.id));
+    checkAll.onchange = () => { rooms.forEach(r => checkAll.checked ? selected.add(r.id) : selected.delete(r.id)); render(); };
+    grid.querySelectorAll('[data-select]').forEach(box => box.onchange = () => { box.checked ? selected.add(box.dataset.select) : selected.delete(box.dataset.select); render(); });
+  } else if (roomMode === 'sectors') {
     const sectors = [...new Set(rooms.map(room => room.level))];
-    $('#room-grid').innerHTML = sectors.map(sector => `<section class="sector-card"><h3>${e(sector)}</h3><div class="sector-rooms">${rooms.filter(r => r.level === sector).map(room => `<button class="sector-room ${statusClass(room.status)}" data-list-room="${e(room.id)}"><strong>${e(room.number)}</strong><small>${e(room.status)}</small></button>`).join('')}</div></section>`).join('');
+    const legend = `<div class="legend">${statuses.map(s => `<span class="${statusClass(s)}"><i></i>${e(s)}</span>`).join('')}</div>`;
+    grid.innerHTML = sectors.map(sector => `<section class="sector-card"><div class="sector-head"><h3>${e(sector)}</h3>${legend}</div><div class="sector-rooms">${rooms.filter(r => r.level === sector).map(room => `<button class="sector-room ${statusClass(room.status)}" data-list-room="${e(room.id)}" aria-label="Habitación ${e(room.number)}, ${e(room.status)}">${e(room.number)}<span class="tip"><b>Habitación</b>${e(room.number)}<br><b>Proceso</b>${e(room.process)}<br><b>Estado</b>${e(room.status)}<br><b>Fotos</b>${state.records.filter(r => r.roomId === room.id).length}</span></button>`).join('')}</div></section>`).join('');
+  } else {
+    grid.innerHTML = rooms.map(room => {
+      const records = state.records.filter(r => r.roomId === room.id);
+      const step = statuses.indexOf(room.status) + 1;
+      return `<article class="room-card"><div class="room-card-top"><span class="room-tile">${e(room.number)}</span><div class="room-title"><strong>Habitación ${e(room.number)}</strong><span>${e(room.level)} · ${records.filter(r => !r.pending).length} fotos · ${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-progress"><div><span>Avance de etapa</span><span><b>${step}/${statuses.length}</b></span></div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i < step ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div></div><div class="room-process">${icon('room')}<span>Proceso actual: <b>${e(room.process)}</b></span></div><div class="room-workers">${room.workers.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><button class="text-button" data-room="${e(room.id)}">Ver detalles</button><button class="small-btn" data-edit-room="${e(room.id)}">Editar</button><button class="small-btn indigo" data-room="${e(room.id)}">${icon('camera')}Fotos</button></div></article>`;
+    }).join('');
   }
-  $('#room-grid').classList.toggle('list-mode', roomMode !== 'cards');
-  document.querySelectorAll('[data-list-room]').forEach(button => button.onclick = () => openRoom(button.dataset.listRoom));
+  grid.classList.toggle('list-mode', roomMode !== 'cards' && rooms.length > 0);
+  grid.querySelectorAll('[data-room]').forEach(button => button.onclick = () => openRoom(button.dataset.room));
+  grid.querySelectorAll('[data-edit-room]').forEach(button => button.onclick = () => editRoom(button.dataset.editRoom));
+  grid.querySelectorAll('[data-list-room]').forEach(button => button.onclick = () => openRoom(button.dataset.listRoom));
+  $('#selection-bar').hidden = !(view === 'habitaciones' && roomMode === 'list' && selected.size);
+  $('#selection-count').textContent = selected.size;
+
+  const max = Math.max(...statuses.map(countBy), 1);
   $('#status-summary').innerHTML = statuses.map(status => {
-    const count = state.rooms.filter(r => r.status === status).length;
-    return `<div class="summary-status"><div><span class="summary-dot ${statusClass(status)}"></span><span>${e(status)}</span><strong>${count}</strong></div><div class="summary-track"><span class="${statusClass(status)}" style="width:${state.rooms.length ? count/state.rooms.length*100 : 0}%"></span></div></div>`;
+    const count = countBy(status);
+    return `<div class="status-col ${statusClass(status)}"><b>${count}</b><div class="bar" style="height:${count ? count / max * 100 : 4}%"></div><small>${e(status)}</small></div>`;
   }).join('');
-  const recent = [...state.records].sort((a,b) => b.date.localeCompare(a.date)).slice(0,4);
-  $('#recent-activity').innerHTML = recent.length ? recent.map(record => `<div class="activity-item">${avatar(record.workers[0])}<div><strong>Hab. ${e(state.rooms.find(r => r.id === record.roomId)?.number || '')}</strong><p>${e(record.process)}</p><small>${e(dateLabel(record.date+'T12:00:00-05:00'))} · ${record.pending ? 'Pendiente' : 'En Drive'}</small></div></div>`).join('') : '<p class="rail-empty">Aún no hay registros.<br>Las fotos que agregues aparecerán aquí.</p>';
+  const recent = [...state.records].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
+  $('#recent-activity').innerHTML = recent.length ? recent.map(record => `<div class="activity-item">${avatar(record.workers[0])}<div><p><b>@${e(workerName(record.workers[0]).split(' ')[0])}</b> registró ${e(record.process.toLowerCase())} en Hab. ${e(state.rooms.find(r => r.id === record.roomId)?.number || '')}</p><small>${e(dateLabel(record.date+'T12:00:00-05:00'))} · ${record.pending ? 'Pendiente' : 'En Drive'}</small></div></div>`).join('') : '<p class="rail-empty">Aún no hay registros.<br>Las fotos que agregues aparecerán aquí.</p>';
+
   $('#team-grid').innerHTML = workers.map(w => {
     const assigned = state.rooms.filter(r => r.workers.includes(w.id));
-    return `<article class="team-card"><div class="portrait"><img src="${w.photo}" alt="${e(w.name)}" loading="lazy"><span class="portrait-label">EQUIPO BACO</span></div><div class="team-info"><h3>${e(w.name)}</h3><p>Personal de obra</p><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}</div></div></article>`;
+    const done = assigned.filter(r => r.status === 'Finalizada').length;
+    return `<article class="team-card"><div class="team-top"><div class="team-photo"><img src="${w.photo}" alt="${e(w.name)}" loading="lazy"><span class="role-tag">Obra</span></div><div><h3>${e(w.name)}</h3><p>${assigned.length ? `${assigned.length} ${assigned.length === 1 ? 'habitación' : 'habitaciones'}` : 'Personal de obra'}<span class="badge ${assigned.length ? 'active' : 'off'}">${assigned.length ? 'Asignado' : 'Libre'}</span></p></div></div><div class="team-load"><div><span>Habitaciones finalizadas</span><span><b>${done}/${assigned.length}</b></span></div><div class="stage-track">${assigned.length ? assigned.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}"></span>`).join('') : '<span></span>'}</div></div><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}</div></article>`;
   }).join('');
   document.querySelectorAll('[data-team-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.teamRoom)));
   if (view === 'registro') renderGallery($('#global-gallery'), state.records);
@@ -174,7 +232,7 @@ async function recordImage(record) {
   const url = URL.createObjectURL(blob); urls.set(record.id, url); return url;
 }
 function renderGallery(container, records) {
-  if (!records.length) { container.innerHTML = '<div class="empty-state compact"><div class="empty-icon">▧</div><h3>El avance todavía está por documentar.</h3><p>Abre una habitación para añadir las primeras fotos del proceso.</p></div>'; return; }
+  if (!records.length) { container.innerHTML = `<div class="empty-state compact"><div class="empty-icon">${icon('camera')}</div><h3>El avance todavía está por documentar.</h3><p>Abre una habitación para añadir las primeras fotos del proceso.</p></div>`; return; }
   const sorted = [...records].sort((a,b) => b.date.localeCompare(a.date));
   container.innerHTML = sorted.map(record => {
     const room = state.rooms.find(r => r.id === record.roomId);
@@ -297,14 +355,45 @@ $('#pick-folder').onclick = async () => {
   } catch (error) { errorToast(error); }
 };
 $('#sync-button').onclick = () => synchronize().catch(errorToast);
-$('#new-room').onclick = () => editRoom();
-$('#drive-button').onclick = openDriveSettings;
-$('#rail-connect').onclick = openDriveSettings;
-document.querySelectorAll('[data-room-mode]').forEach(button => button.onclick = () => { roomMode = button.dataset.roomMode; document.querySelectorAll('[data-room-mode]').forEach(b => b.classList.toggle('selected', b === button)); render(); });
-$('#show-plan').onclick = $('#plan-preview').onclick = () => setView('plano');
-$('#search').oninput = render;
+$('#new-room').onclick = $('#heading-action').onclick = $('#praise-new').onclick = () => editRoom();
+$('#drive-button').onclick = $('#rail-connect').onclick = $('#sidebar-drive').onclick = openDriveSettings;
+$('#bell').onclick = () => setView('registro');
+const addMenu = $('#add-menu');
+$('#add-menu-toggle').onclick = event => { event.stopPropagation(); addMenu.hidden = !addMenu.hidden; $('#add-menu-toggle').setAttribute('aria-expanded', String(!addMenu.hidden)); };
+document.addEventListener('click', event => { if (!addMenu.hidden && !event.target.closest('.add-split')) addMenu.hidden = true; });
+document.querySelectorAll('[data-add-action]').forEach(button => button.onclick = () => {
+  addMenu.hidden = true; closeNav();
+  const action = button.dataset.addAction;
+  if (action === 'room') editRoom();
+  else if (action === 'drive') openDriveSettings();
+  else if (state.rooms.length) { setView('habitaciones'); setRoomMode('cards'); render(); toast('Abre una habitación con «Fotos» para registrar su proceso.'); }
+  else toast('Primero crea una habitación para registrar sus fotos.');
+});
+$('#rooms-toggle').onclick = () => {
+  const group = $('#rooms-group');
+  if (view !== 'habitaciones') { group.classList.add('open'); setView('habitaciones'); }
+  else group.classList.toggle('open');
+  $('#rooms-toggle').setAttribute('aria-expanded', String(group.classList.contains('open')));
+};
+document.querySelectorAll('[data-room-mode]').forEach(button => button.onclick = () => {
+  setRoomMode(button.dataset.roomMode);
+  if (view !== 'habitaciones') setView('habitaciones'); else { closeNav(); render(); }
+  if (button.classList.contains('sub-item')) document.querySelector('.rooms-panel')?.scrollIntoView({behavior:'smooth', block:'start'});
+});
+$('#collapse-sidebar').onclick = () => document.body.classList.toggle('collapsed');
+$('#menu-button').onclick = () => { document.body.classList.add('nav-open'); $('#scrim').hidden = false; };
+$('#scrim').onclick = closeNav;
+$('#selection-clear').onclick = () => { selected.clear(); render(); };
+$('#selection-export').onclick = () => {
+  const csv = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const rows = state.rooms.filter(r => selected.has(r.id)).map(r => [r.number, r.level, r.process, r.status, ...r.workers.map(workerName), r.notes].map(csv).join(','));
+  const blob = new Blob(['﻿' + ['Habitación,Sector,Proceso,Estado,Maestro 1,Maestro 2,Observaciones', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-habitaciones-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+$('#plan-preview').onclick = () => setView('plano');
+$('#search').oninput = () => { if (view !== 'habitaciones') setView('habitaciones'); else render(); };
 $('#status-filter').onchange = render;
-document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
+document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => { if (button.dataset.roomNav) setRoomMode(button.dataset.roomNav); setView(button.dataset.view); });
 document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => button.closest('dialog').close());
 $('#plan-image').src = $('#full-plan-image').src = $('#download-plan').href = plan;
 $('#export-button').onclick = () => {

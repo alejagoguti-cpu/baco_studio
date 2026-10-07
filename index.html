@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#fc6729"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
+  <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -10,39 +10,152 @@
   <script type="module" src="app.mjs"></script>
 </head>
 <body>
-  <aside class="sidebar">
-    <a class="brand" href="#habitaciones" aria-label="Baco Studio inicio"><span>BACO</span><small>S T U D I O</small></a>
-    <div class="sidebar-label">ESPACIO DE TRABAJO</div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
+      <symbol id="i-room" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .6 3.2 2.3 3.5 5.2"/></symbol>
+      <symbol id="i-plan" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h8V3M11 21v-6h10M15 10h6"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M4 20h16"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+      <symbol id="i-drive" viewBox="0 0 24 24"><path d="M8.5 4h7l6 10.5-3.5 6h-12L2.5 14.5z"/><path d="m8.5 4 6 10.5H2.5M15.5 4l-6 10.5"/></symbol>
+      <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    </defs>
+  </svg>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a class="brand" href="#habitaciones" aria-label="Baco Studio inicio"><span class="brand-mark">B</span><span class="brand-name">Baco Studio</span></a>
+      <button class="collapse-button" id="collapse-sidebar" aria-label="Contraer menú"><svg><use href="#i-left"/></svg></button>
+    </div>
+    <div class="add-split">
+      <button class="add-main" id="new-room"><svg><use href="#i-plus"/></svg><span>Nueva habitación</span></button>
+      <button class="add-more" id="add-menu-toggle" aria-label="Más acciones" aria-expanded="false"><svg><use href="#i-chevron"/></svg></button>
+      <div class="add-menu" id="add-menu" hidden>
+        <button data-add-action="room"><svg><use href="#i-room"/></svg>Nueva habitación</button>
+        <button data-add-action="photos"><svg><use href="#i-camera"/></svg>Registrar fotos</button>
+        <button data-add-action="drive"><svg><use href="#i-drive"/></svg>Configurar Drive</button>
+      </div>
+    </div>
     <nav aria-label="Navegación principal">
-      <button class="nav-item active" data-view="habitaciones"><span class="nav-icon">▦</span> Habitaciones <span id="nav-count" class="nav-count">0</span></button>
-      <button class="nav-item" data-view="registro"><span class="nav-icon">▧</span> Registro fotográfico</button>
-      <button class="nav-item" data-view="equipo"><span class="nav-icon">♧</span> Equipo de obra <span class="nav-count">10</span></button>
-      <button class="nav-item" data-view="plano"><span class="nav-icon">⌑</span> Planta de referencia</button>
+      <button class="nav-item active" data-view="habitaciones" data-room-nav="cards"><svg><use href="#i-grid"/></svg><span>Resumen</span></button>
+      <div class="nav-group open" id="rooms-group">
+        <button class="nav-item nav-parent" id="rooms-toggle" aria-expanded="true"><svg><use href="#i-room"/></svg><span>Habitaciones</span><span id="nav-count" class="nav-count">0</span><svg class="chev"><use href="#i-chevron"/></svg></button>
+        <div class="subnav">
+          <button class="sub-item selected" data-room-mode="cards">Tarjetas</button>
+          <button class="sub-item" data-room-mode="list">Lista</button>
+          <button class="sub-item" data-room-mode="sectors">Mapa por sector</button>
+        </div>
+      </div>
+      <button class="nav-item" data-view="registro"><svg><use href="#i-camera"/></svg><span>Registro fotográfico</span></button>
+      <button class="nav-item" data-view="equipo"><svg><use href="#i-users"/></svg><span>Equipo de obra</span><span class="nav-count">10</span></button>
+      <button class="nav-item" data-view="plano"><svg><use href="#i-plan"/></svg><span>Planta de referencia</span></button>
     </nav>
-    <div class="sidebar-bottom"><div class="project-mark">B</div><div><strong>Baco Studio</strong><small>Arquitectura & obra</small></div></div>
+    <div class="sidebar-bottom">
+      <button class="nav-item" id="sidebar-drive"><svg><use href="#i-settings"/></svg><span>Configuración</span></button>
+      <button class="nav-item" id="export-button"><svg><use href="#i-download"/></svg><span>Exportar respaldo</span></button>
+    </div>
   </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
   <main>
-    <header class="topbar"><div class="breadcrumb">Baco Studio <span>/</span> <strong id="breadcrumb-view">Habitaciones</strong></div><button id="drive-button" class="drive-button"><span class="status-dot"></span><span id="drive-status">Conectar Drive</span></button></header>
+    <header class="topbar">
+      <button class="menu-button" id="menu-button" aria-label="Abrir menú"><svg><use href="#i-menu"/></svg></button>
+      <label class="top-search"><svg><use href="#i-search"/></svg><input id="search" placeholder="Buscar habitación, sector o maestro…" aria-label="Buscar habitación o maestro"></label>
+      <div class="top-actions">
+        <button class="bell" id="bell" aria-label="Fotos pendientes"><svg><use href="#i-bell"/></svg></button>
+        <span class="pending-pill" id="pending-pill" hidden></span>
+        <button id="drive-button" class="drive-button"><span class="status-dot"></span><span id="drive-status">Conectar Drive</span></button>
+        <div class="user-chip"><span class="user-mark">B</span><span><strong>Baco Studio</strong><small id="breadcrumb-view">Habitaciones</small></span></div>
+      </div>
+    </header>
+
     <div class="content">
-      <section class="page-heading"><div><p class="eyebrow">SEGUIMIENTO DE OBRA</p><h1 id="page-title">Cada espacio, un equipo.</h1><p id="page-subtitle">Habitaciones, responsables y avances. Todo en un mismo lugar.</p></div><button class="button primary" id="new-room">＋ Nueva habitación</button></section>
+      <section class="page-heading">
+        <div><h1 id="page-title">Resumen de obra</h1><p id="page-subtitle">Habitaciones, responsables y avances. Todo en un mismo lugar.</p></div>
+        <button class="button primary" id="heading-action"><svg><use href="#i-plus"/></svg>Nueva habitación</button>
+      </section>
+
       <section id="overview" class="stats" aria-label="Resumen de obra">
-        <div class="stat"><span>Habitaciones registradas</span><strong id="stat-rooms">00</strong><small>Espacios de trabajo</small></div>
-        <div class="stat"><span>En proceso</span><strong id="stat-active">00</strong><small>Intervenciones activas</small></div>
-        <div class="stat"><span>Equipo de obra</span><strong>10<span class="stat-unit"> personas</span></strong><small>Dos responsables por habitación</small></div>
-        <div class="stat"><span>Fotos en Drive</span><strong id="stat-photos">00</strong><small id="stat-photo-caption">Conecta Drive para consultar</small></div>
+        <div class="stat"><div class="stat-label"><svg><use href="#i-room"/></svg>Habitaciones</div><div class="stat-row"><strong id="stat-rooms">00</strong><div class="mini-bars" id="bars-rooms" aria-hidden="true"></div></div><small>Por estado de obra</small></div>
+        <div class="stat"><div class="stat-label"><svg><use href="#i-clock"/></svg>En proceso</div><div class="stat-row"><strong id="stat-active">00</strong><div class="mini-bars" id="bars-process" aria-hidden="true"></div></div><small>Por proceso activo</small></div>
+        <div class="stat"><div class="stat-label"><svg><use href="#i-camera"/></svg>Fotos en Drive</div><div class="stat-row"><strong id="stat-photos">00</strong><div class="mini-bars" id="bars-photos" aria-hidden="true"></div></div><small id="stat-photo-caption">Conecta Drive para consultar</small></div>
+        <div class="stat stat-clock"><div class="stat-label">Estado general <span class="clock-tag" id="clock-tag">Sin registros</span></div><div class="clock" id="status-clock"><span>00</span><i>:</i><span>00</span><i>:</i><span>00</span></div><div class="clock-legend"><span>Pendientes</span><span>En proceso</span><span>Finalizadas</span></div></div>
       </section>
+
       <section id="view-habitaciones" class="view">
-        <div class="feature"><div class="feature-text"><p class="eyebrow">DEL PLANO A LA OBRA</p><h2>La historia de cada<br>habitación empieza aquí.</h2><p>Asigna a los dos maestros encargados y documenta cada proceso, desde el inicio hasta la entrega.</p><button class="text-button" id="show-plan">Explorar la planta <span>↗</span></button></div><button class="plan-preview" id="plan-preview" aria-label="Abrir planta de referencia"><img id="plan-image" alt="Planta arquitectónica proporcionada por Baco Studio"><span>PLANTA DE REFERENCIA <span>↗</span></span></button></div>
-        <div class="section-heading"><div><p class="eyebrow">ESPACIOS DE INTERVENCIÓN</p><h2>Habitaciones</h2></div><div class="filters"><label class="search"><span>⌕</span><input id="search" placeholder="Buscar habitación o maestro" aria-label="Buscar habitación o maestro"></label><select id="status-filter" aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></div></div>
-        <div class="room-view-controls" role="group" aria-label="Vista de habitaciones"><button class="selected" data-room-mode="cards">Tarjetas</button><button data-room-mode="list">Lista</button><button data-room-mode="sectors">Por sector</button></div>
-        <div class="room-workspace"><div id="room-grid" class="room-grid"></div><aside class="activity-rail"><section class="rail-card"><div class="rail-heading"><h3>Estado del proyecto</h3><span>↗</span></div><div id="status-summary"></div></section><section class="rail-card"><div class="rail-heading"><h3>Actividad reciente</h3><span>◷</span></div><div id="recent-activity"></div></section><section class="drive-callout"><span class="callout-icon">▧</span><h3>Un archivo para<br>todo el equipo.</h3><p>Las fotografías del proceso se organizan por habitación en Google Drive.</p><button class="text-button" id="rail-connect">Configurar Drive ↗</button></section></aside></div>
+        <div class="hero-row">
+          <div class="progress-card"><small>Habitaciones finalizadas</small><strong id="done-percent">0%</strong><span id="done-date"></span></div>
+          <div class="praise-card"><p>Cada espacio, un equipo. Dos maestros encargados por habitación.</p><button class="praise-button" id="praise-new">Asignar habitación <svg><use href="#i-arrow"/></svg></button></div>
+          <button class="plan-card" id="plan-preview" aria-label="Abrir planta de referencia">
+            <div class="plan-text"><span class="plan-icons"><span><svg><use href="#i-plan"/></svg></span><span><svg><use href="#i-camera"/></svg></span></span><h2>Planta de referencia<br>Acceso rápido</h2><p>Consulta el plano original para orientar el seguimiento de cada habitación.</p><span class="plan-cta" id="show-plan">Explorar la planta <svg><use href="#i-arrow"/></svg></span></div>
+            <div class="plan-thumb"><img id="plan-image" alt="Planta arquitectónica proporcionada por Baco Studio"></div>
+          </button>
+        </div>
+
+        <div class="room-workspace">
+          <div class="panel rooms-panel">
+            <div class="panel-heading">
+              <div><h2>Habitaciones <span class="count-chip" id="rooms-count">0</span></h2><p class="panel-sub" id="rooms-sub">Asignaciones y estado de cada espacio.</p></div>
+              <div class="panel-tools">
+                <div class="segmented" role="group" aria-label="Vista de habitaciones"><button class="selected" data-room-mode="cards">Tarjetas</button><button data-room-mode="list">Lista</button><button data-room-mode="sectors">Sectores</button></div>
+                <label class="select-pill"><svg><use href="#i-filter"/></svg><select id="status-filter" aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label>
+              </div>
+            </div>
+            <div id="room-grid" class="room-grid"></div>
+          </div>
+          <aside class="activity-rail">
+            <section class="rail-card">
+              <div class="rail-heading"><h3>Estado del proyecto</h3><span class="more">···</span></div>
+              <strong class="rail-big" id="rail-percent">0%</strong>
+              <p class="rail-note" id="rail-note">Sin habitaciones registradas.</p>
+              <div class="status-chart" id="status-summary"></div>
+            </section>
+            <section class="rail-card">
+              <div class="rail-heading"><h3><svg><use href="#i-bell"/></svg>Actividad reciente</h3><span class="rail-tag">Fotos</span></div>
+              <div id="recent-activity"></div>
+            </section>
+            <section class="drive-callout">
+              <h3><svg><use href="#i-spark"/></svg>Archivo en Drive</h3>
+              <p>Las fotografías del proceso se organizan por habitación y proceso en Google Drive, para todo el equipo.</p>
+              <button class="text-button" id="rail-connect">Configurar Drive <svg><use href="#i-arrow"/></svg></button>
+            </section>
+          </aside>
+        </div>
       </section>
-      <section id="view-registro" class="view" hidden><div class="section-heading"><h2>Registro fotográfico</h2><button class="button secondary" id="sync-button">↻ Actualizar desde Drive</button></div><p class="muted">Selecciona una habitación para registrar su proceso. Las fotos pendientes se conservan en este dispositivo hasta subirlas.</p><div id="global-gallery" class="gallery"></div></section>
-      <section id="view-equipo" class="view" hidden><div class="section-heading"><h2>Las personas detrás de la obra</h2><span class="pill">10 integrantes</span></div><p class="muted">Selecciona dos personas distintas al crear o editar cada habitación.</p><div id="team-grid" class="team-grid"></div></section>
-      <section id="view-plano" class="view" hidden><div class="section-heading"><h2>Planta de referencia</h2><a id="download-plan" class="button secondary" download="Baco-Studio-planta.png">↓ Descargar planta</a></div><p class="muted">Plano suministrado. La numeración y la correspondencia espacial de las habitaciones están pendientes de confirmar.</p><div class="full-plan"><img id="full-plan-image" alt="Planta arquitectónica original sin modificar"></div></section>
-      <footer><span>BACO STUDIO</span><span>Diseñar. Construir. Documentar.</span><button id="export-button">Exportar respaldo</button></footer>
+
+      <section id="view-registro" class="view" hidden>
+        <div class="panel"><div class="panel-heading"><div><h2>Registro fotográfico</h2><p class="panel-sub">Selecciona una habitación para registrar su proceso. Las fotos pendientes se conservan en este dispositivo hasta subirlas.</p></div><button class="button secondary" id="sync-button"><svg><use href="#i-sync"/></svg>Actualizar desde Drive</button></div><div id="global-gallery" class="gallery"></div></div>
+      </section>
+
+      <section id="view-equipo" class="view" hidden>
+        <div class="team-heading"><h2><span class="live-dot"></span>Equipo de obra <span class="count-chip">10</span></h2><p class="panel-sub">Selecciona dos personas distintas al crear o editar cada habitación.</p></div>
+        <div id="team-grid" class="team-grid"></div>
+      </section>
+
+      <section id="view-plano" class="view" hidden>
+        <div class="panel"><div class="panel-heading"><div><h2>Planta de referencia</h2><p class="panel-sub">Plano suministrado. La numeración y la correspondencia espacial de las habitaciones están pendientes de confirmar.</p></div><a id="download-plan" class="button primary" download="Baco-Studio-planta.png"><svg><use href="#i-download"/></svg>Descargar planta</a></div><div class="full-plan"><img id="full-plan-image" alt="Planta arquitectónica original sin modificar"></div></div>
+      </section>
+
+      <footer><span>BACO STUDIO</span><span>Diseñar. Construir. Documentar.</span></footer>
     </div>
   </main>
+
+  <div class="selection-bar" id="selection-bar" hidden><span><b id="selection-count">0</b> seleccionadas</span><button id="selection-export"><svg><use href="#i-download"/></svg>Exportar CSV</button><button id="selection-clear">Limpiar</button></div>
+
   <dialog id="room-dialog"><form id="room-form"><div class="dialog-heading"><div><p class="eyebrow">ORGANIZACIÓN DE OBRA</p><h2 id="room-form-title">Nueva habitación</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><div class="form-row"><label>Habitación<input name="number" required maxlength="30" placeholder="Ej. 219"></label><label>Piso o sector<input name="level" required maxlength="60" placeholder="Ej. Segundo piso"></label></div><label>Proceso de obra<select name="process" id="room-process" required></select></label><div class="form-row"><label>Maestro encargado 1<select name="worker1" required></select></label><label>Maestro encargado 2<select name="worker2" required></select></label></div><label>Estado<select name="status"><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="Alcance, pendientes o indicaciones para el equipo"></textarea></label><p class="form-note">Las asignaciones se guardan en este dispositivo. Al sincronizar, también se guardan en la carpeta de Drive del proyecto.</p><div class="dialog-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar habitación</button></div></form></dialog>
   <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
   <dialog id="drive-dialog"><form id="drive-form"><div class="dialog-heading"><div><p class="eyebrow">ARCHIVO DEL PROYECTO</p><h2>Google Drive</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><p>Las fotos se organizan en <strong>Proyecto → Habitación → Proceso</strong>. Cada foto conserva fecha, responsables y observaciones.</p><label>ID de cliente de Google<input name="clientId" required placeholder="…apps.googleusercontent.com" autocomplete="off"></label><details><summary>Vincular una carpeta existente</summary><p class="form-note">Para seleccionar una carpeta compartida, configura Google Picker con una clave de API y el número de proyecto del mismo proyecto de Google Cloud.</p><label>Clave de API de Google Picker<input name="apiKey" autocomplete="off"></label><label>Número del proyecto de Google Cloud<input name="appId" inputmode="numeric"></label></details><div class="connection-info" id="connection-info"></div><p class="form-note">Si todavía no tienes la configuración, puedes organizar habitaciones y guardar fotos pendientes. Necesitas una cuenta de Google con permiso de edición para subir al Drive.</p><div class="dialog-actions"><button type="button" class="button secondary" id="disconnect-button">Desconectar</button><button class="button primary" type="submit">Guardar y conectar</button></div><button type="button" class="text-button" id="pick-folder">Seleccionar carpeta de Drive ↗</button></form></dialog>
