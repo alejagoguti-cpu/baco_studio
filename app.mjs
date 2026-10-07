@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007c';
-import { Drive } from './drive.mjs?v=20261007c';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007c';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007c';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007d';
+import { Drive } from './drive.mjs?v=20261007d';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007d';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007d';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -179,8 +179,15 @@ function safely(name, fn) {
   try { const out = fn(); if (out?.catch) out.catch(error => console.error(`[Baco Studio] ${name}`, error)); }
   catch (error) { console.error(`[Baco Studio] ${name}`, error); }
 }
+// Pone el nombre de cada columna en sus celdas para que, en celular y tablet, la tabla se vea como tarjetas.
+function labelTables(root = document) {
+  for (const table of root.querySelectorAll('table.room-table')) {
+    const heads = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    for (const row of table.querySelectorAll('tbody tr')) [...row.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; else td.removeAttribute('data-label'); });
+  }
+}
 function render() {
-  for (const [name, fn] of [['resumen', renderCore], ['tareas', renderTasks], ['materiales', renderMaterials], ['reportes', renderReports], ['entregas', renderMilestones], ['planos', renderPlans], ['listas', () => enhance(document)]]) safely(name, fn);
+  for (const [name, fn] of [['resumen', renderCore], ['tareas', renderTasks], ['materiales', renderMaterials], ['reportes', renderReports], ['entregas', renderMilestones], ['planos', renderPlans], ['listas', () => enhance(document)], ['tablas', labelTables]]) safely(name, fn);
 }
 
 const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
