@@ -18,7 +18,7 @@ let materialPage = 1;
 const materialSelected = new Set();
 let activeRoom = null;
 let taskScope = 'all';
-let view = 'habitaciones';
+let view = 'inicio';
 let roomMode = 'cards';
 let syncing = false;
 let uploadBusy = false;
@@ -81,20 +81,21 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Inicio', 'Entregas, objetivo del día, habitaciones y avances de la obra.', 'Inicio'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], inicio:['Inicio', 'Objetivo del día y entregas de la obra.', 'Inicio'], habitaciones:['Habitaciones', 'Asigna responsables y procesos, y documenta el avance de cada espacio.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
   $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
-  $('#overview').hidden = ['plano','tareas','materiales','reportes'].includes(next);
+  $('#overview').hidden = ['plano','tareas','materiales','reportes','inicio'].includes(next);
   $('#heading-action').hidden = next === 'plano' || next === 'reportes';
-  $('#heading-action').lastChild.textContent = {tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
+  $('#heading-action').lastChild.textContent = {inicio:'Nueva entrega', tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
   $('#materials-toggle').classList.toggle('active', next === 'materiales');
   if (next === 'materiales') $('#materials-group').classList.add('open');
   $('#tasks-toggle').classList.toggle('active', next === 'tareas');
   if (next === 'tareas') $('#tasks-group').classList.add('open');
   history.replaceState(null, '', `#${next}`);
+  document.body.dataset.view = next;
   closeNav();
   render();
 }
@@ -116,6 +117,7 @@ function render() {
   $('#goal-today-text').textContent = goal || 'Aún no defines el objetivo de hoy.';
   $('#goal-today-text').classList.toggle('goal-empty', !goal);
   $('#goal-edit').firstChild.textContent = goal ? 'Cambiar objetivo ' : 'Definir objetivo ';
+  $('#goal-date').textContent = longDate(today());
   $('#done-percent').textContent = `${total ? Math.round(countBy('Finalizada') / total * 100) : 0}%`;
   $('#done-date').textContent = dateLabel(new Date().toISOString());
   const progress = total ? Math.round(state.rooms.reduce((sum, r) => sum + statuses.indexOf(r.status), 0) / (total * (statuses.length - 1)) * 100) : 0;
@@ -465,28 +467,20 @@ const shortDate = d => new Intl.DateTimeFormat('es-CO', {day:'numeric', month:'s
 const addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 const daysText = n => n === 0 ? 'Es hoy' : n === 1 ? 'Falta 1 día' : n > 1 ? `Faltan ${n} días` : n === -1 ? 'Venció ayer' : `Venció hace ${-n} días`;
 function renderClock() {
-  const next = nextMilestone(state.milestones, today());
-  if (next) {
-    const deadline = new Date(next.date + 'T23:59:00-05:00').getTime();
-    const ms = Math.max(0, deadline - Date.now());
-    const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.floor(ms % 3600000 / 60000);
-    $('#clock-title').textContent = next.name.length > 24 ? next.name.slice(0, 23) + '…' : next.name;
-    $('#status-clock').innerHTML = [d, h, m].map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
-    $('#clock-legend').innerHTML = '<span>Días</span><span>Horas</span><span>Min</span>';
-    $('#clock-tag').textContent = shortDate(next.date);
-    $('#clock-tag').classList.toggle('ok', daysBetween(today(), next.date) > 3);
-    return;
-  }
-  const total = state.rooms.length, count = s => state.rooms.filter(r => r.status === s).length;
-  $('#clock-title').textContent = 'Estado general';
+  const total = state.rooms.length, count = st => state.rooms.filter(r => r.status === st).length;
   $('#status-clock').innerHTML = [count('Pendiente'), count('En proceso'), count('Finalizada')].map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
-  $('#clock-legend').innerHTML = '<span>Pendientes</span><span>En proceso</span><span>Finalizadas</span>';
   const review = count('En revisión');
   $('#clock-tag').textContent = !total ? 'Sin registros' : review ? `${review} en revisión` : 'Al día';
   $('#clock-tag').classList.toggle('ok', !!total && !review);
+  const next = nextMilestone(state.milestones, today());
+  if (!next) { $('#countdown-card').innerHTML = `<div class="countdown-empty">${icon('flag')}<div><strong>Sin entregas próximas</strong><p>Registra la próxima entrega para ver la cuenta regresiva.</p></div></div>`; return; }
+  const ms = Math.max(0, new Date(next.date + 'T23:59:00-05:00').getTime() - Date.now());
+  const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.floor(ms % 3600000 / 60000);
+  const rooms = next.roomIds.map(id => state.rooms.find(r => r.id === id)).filter(Boolean), done = rooms.filter(r => r.status === 'Finalizada').length;
+  $('#countdown-card').innerHTML = `<div class="countdown-info"><small>PRÓXIMA ENTREGA</small><strong>${e(next.name)}</strong><span>${e(longDate(next.date))}${rooms.length ? ` · ${done}/${rooms.length} habitaciones listas` : ''}</span></div><div class="countdown-clock"><div><b>${pad(d)}</b><small>Días</small></div><i>:</i><div><b>${pad(h)}</b><small>Horas</small></div><i>:</i><div><b>${pad(m)}</b><small>Min</small></div></div>`;
 }
 function renderMilestones() {
-  if (view !== 'habitaciones') return;
+  if (view !== 'inicio') return;
   const list = [...state.milestones].sort((a, b) => (a.done - b.done) || a.date.localeCompare(b.date));
   $('#milestone-list').innerHTML = list.length ? list.map(m => {
     const rooms = m.roomIds.map(id => state.rooms.find(r => r.id === id)).filter(Boolean);
@@ -498,7 +492,7 @@ function renderMilestones() {
   $('#empty-new-ms')?.addEventListener('click', () => editMilestone());
   document.querySelectorAll('[data-ms-edit]').forEach(b => b.onclick = () => editMilestone(b.dataset.msEdit));
   document.querySelectorAll('[data-ms-room]').forEach(b => b.onclick = () => openRoom(b.dataset.msRoom));
-  const days = Array.from({length:7}, (_, i) => addDays(today(), i - 1));
+  const days = Array.from({length:7}, (_, i) => addDays(today(), i));
   const extra = [];
   $('#goal-list').innerHTML = days.map(d => {
     const g = state.goals[d]?.text, ms = state.milestones.filter(m => m.date === d);
@@ -543,7 +537,7 @@ $('#milestone-form').addEventListener('submit', event => {
     const f = event.target.elements, existing = state.milestones.find(m => m.id === f.id.value);
     const m = validateMilestone({...existing, id: f.id.value || crypto.randomUUID(), name: f.name.value, date: f.date.value, notes: f.notes.value, done: f.done.checked, roomIds: [...document.querySelectorAll('#milestone-rooms input:checked')].map(i => i.value)}, state.rooms);
     state.milestones = [...state.milestones.filter(x => x.id !== m.id), m]; persist(); $('#milestone-dialog').close();
-    if (view !== 'habitaciones') setView('habitaciones'); else render();
+    if (view !== 'inicio') setView('inicio'); else render();
     toast(existing ? 'Entrega actualizada.' : `Entrega «${m.name}» registrada para ${longDate(m.date)}.`);
   } catch (error) { errorToast(error); }
 });
@@ -754,7 +748,7 @@ $('#new-room').onclick = () => editRoom();
 $('#goal-edit').onclick = () => editGoal();
 $('#milestone-new').onclick = () => editMilestone();
 setInterval(() => { if (!document.hidden) renderClock(); }, 30000);
-$('#heading-action').onclick = () => ({tareas:editTask, materiales:editMaterial, equipo:editWorker}[view] || editRoom)();
+$('#heading-action').onclick = () => ({inicio:() => editMilestone(), tareas:editTask, materiales:editMaterial, equipo:editWorker}[view] || editRoom)();
 $('#task-praise-new').onclick = $('#task-quick').onclick = () => editTask();
 $('#target-open').onclick = () => { taskScope = 'today'; render(); };
 $('#tasks-toggle').onclick = () => { const g = $('#tasks-group'); if (view !== 'tareas') { g.classList.add('open'); setView('tareas'); } else g.classList.toggle('open'); $('#tasks-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
@@ -845,4 +839,4 @@ $('#export-button').onclick = () => {
   toast('Respaldo de habitaciones y metadatos exportado. Las fotos pendientes permanecen en este dispositivo.');
 };
 setInterval(() => { if (!drive.connected && $('#drive-button').classList.contains('connected')) render(); }, 30000);
-setView(['habitaciones','tareas','materiales','reportes','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'habitaciones');
+setView(['inicio','habitaciones','tareas','materiales','reportes','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'inicio');

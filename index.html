@@ -50,7 +50,7 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <a class="brand" href="#habitaciones" aria-label="Baco Studio inicio"><span class="brand-mark">B</span><span class="brand-name">Baco Studio</span></a>
+      <a class="brand" href="#inicio" aria-label="Baco Studio inicio"><span class="brand-mark">B</span><span class="brand-name">Baco Studio</span></a>
       <button class="collapse-button" id="collapse-sidebar" aria-label="Contraer menú"><svg><use href="#i-left"/></svg></button>
     </div>
     <div class="add-split">
@@ -68,7 +68,7 @@
       </div>
     </div>
     <nav aria-label="Navegación principal">
-      <button class="nav-item active" data-view="habitaciones" data-room-nav="cards"><svg><use href="#i-grid"/></svg><span>Inicio</span></button>
+      <button class="nav-item active" data-view="inicio"><svg><use href="#i-grid"/></svg><span>Inicio</span></button>
       <div class="nav-group open" id="rooms-group">
         <button class="nav-item nav-parent" id="rooms-toggle" aria-expanded="true"><svg><use href="#i-room"/></svg><span>Habitaciones</span><span id="nav-count" class="nav-count">0</span><svg class="chev"><use href="#i-chevron"/></svg></button>
         <div class="subnav">
@@ -118,7 +118,7 @@
 
     <div class="content">
       <section class="page-heading">
-        <div><h1 id="page-title">Inicio</h1><p id="page-subtitle">Habitaciones, responsables y avances. Todo en un mismo lugar.</p></div>
+        <div><h1 id="page-title">Inicio</h1><p id="page-subtitle">Objetivo del día y entregas de la obra.</p></div>
         <button class="button primary" id="heading-action"><svg><use href="#i-plus"/></svg>Nueva habitación</button>
       </section>
 
@@ -129,20 +129,27 @@
         <div class="stat stat-clock"><div class="stat-label"><span id="clock-title">Estado general</span> <span class="clock-tag" id="clock-tag">Sin registros</span></div><div class="clock" id="status-clock"><span>00</span><i>:</i><span>00</span><i>:</i><span>00</span></div><div class="clock-legend" id="clock-legend"><span>Pendientes</span><span>En proceso</span><span>Finalizadas</span></div></div>
       </section>
 
-      <section id="view-habitaciones" class="view">
+      <section id="view-inicio" class="view home">
+        <div class="home-col">
+          <div class="praise-card goal-card"><div class="goal-head"><small class="goal-label">OBJETIVO DE HOY</small><span class="goal-date" id="goal-date"></span></div><p id="goal-today-text">Aún no defines el objetivo de hoy.</p><button class="praise-button" id="goal-edit">Definir objetivo <svg><use href="#i-edit"/></svg></button></div>
+          <div class="panel home-panel"><div class="panel-heading"><div><h2>Objetivos de la semana</h2><p class="panel-sub">Toca un día para escribir o planear su objetivo.</p></div></div><div id="goal-list" class="home-scroll"></div></div>
+        </div>
+        <div class="home-col">
+          <div class="countdown-card" id="countdown-card"></div>
+          <div class="panel home-panel"><div class="panel-heading"><div><h2>Entregas</h2><p class="panel-sub">Fechas comprometidas y avance de sus habitaciones.</p></div><button class="small-btn" id="milestone-new" hidden></button></div><div id="milestone-list" class="home-scroll"></div></div>
+        </div>
+      </section>
+
+      <section id="view-habitaciones" class="view" hidden>
         <div class="hero-row">
           <div class="progress-card"><small>Habitaciones finalizadas</small><strong id="done-percent">0%</strong><span id="done-date"></span></div>
-          <div class="praise-card goal-card"><small class="goal-label">OBJETIVO DE HOY</small><p id="goal-today-text">Aún no defines el objetivo de hoy.</p><button class="praise-button" id="goal-edit">Definir objetivo <svg><use href="#i-edit"/></svg></button></div>
+          
           <button class="plan-card" id="plan-preview" aria-label="Abrir planta de referencia">
             <div class="plan-text"><span class="plan-icons"><span><svg><use href="#i-plan"/></svg></span><span><svg><use href="#i-camera"/></svg></span></span><h2>Planta de referencia<br>Acceso rápido</h2><p>Consulta el plano original para orientar el seguimiento de cada habitación.</p><span class="plan-cta" id="show-plan">Explorar la planta <svg><use href="#i-arrow"/></svg></span></div>
             <div class="plan-thumb"><img id="plan-image" alt="Planta arquitectónica proporcionada por Baco Studio"></div>
           </button>
         </div>
 
-        <div class="home-plan">
-          <div class="panel"><div class="panel-heading"><div><h2>Entregas</h2><p class="panel-sub">Fechas comprometidas y avance de las habitaciones incluidas.</p></div><button class="small-btn indigo" id="milestone-new"><svg><use href="#i-plus"/></svg>Nueva entrega</button></div><div id="milestone-list"></div></div>
-          <div class="panel"><div class="panel-heading"><div><h2>Objetivos diarios</h2><p class="panel-sub">Cambia cada día: toca un día para escribirlo o planearlo.</p></div></div><div id="goal-list"></div></div>
-        </div>
         <div class="room-workspace">
           <div class="panel rooms-panel">
             <div class="panel-heading">

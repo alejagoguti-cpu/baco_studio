@@ -547,3 +547,40 @@ summary{cursor:pointer;font-size:12.5px;font-weight:600;margin-bottom:12px}
 #goal-list{display:grid;grid-template-columns:1fr;gap:0}
 #goal-list .goal-day:last-child{margin-bottom:0}
 @media(max-width:1180px){.home-plan{grid-template-columns:1fr}}
+/* Inicio sin scroll */
+#view-habitaciones .hero-row{grid-template-columns:200px minmax(0,1fr)}
+.home{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;height:calc(100dvh - 230px);min-height:520px}
+.home[hidden]{display:none}
+.home-col{display:flex;flex-direction:column;gap:16px;min-height:0}
+.home .goal-card{flex:0 0 auto;min-height:190px;padding:22px 24px}
+.goal-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.goal-date{font-size:12px;color:#d9d3ff;text-transform:capitalize}
+.home .goal-card p{font-size:20px;line-height:1.4;font-weight:600}
+.home-panel{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 20px}
+.home-panel .panel-heading{margin-bottom:12px}
+.home-scroll{flex:1;min-height:0;overflow:auto;margin:0 -6px;padding:0 6px}
+.home .goal-day{padding:8px 12px;margin-bottom:6px}
+.home .milestone{padding:12px 14px;margin-bottom:10px;grid-template-columns:50px minmax(0,1fr) auto}
+.home .milestone-date b{font-size:19px}
+.home .milestone-body>p{margin:2px 0 8px}
+.countdown-card{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;min-height:132px}
+.countdown-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+.countdown-info small{font-size:10px;letter-spacing:1.4px;font-weight:700;color:var(--muted)}
+.countdown-info strong{font-size:20px;letter-spacing:-.4px}
+.countdown-info span{font-size:12.5px;color:var(--muted)}
+.countdown-clock{display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:16px;color:#fff;background:linear-gradient(180deg,#7d70e6,#5545cf);box-shadow:inset 0 1px 0 #ffffff40,0 8px 20px #5545cf40;flex-shrink:0}
+.countdown-clock div{display:flex;flex-direction:column;align-items:center;min-width:46px}
+.countdown-clock b{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.countdown-clock small{font-size:10px;color:#e3defc}
+.countdown-clock i{font-style:normal;font-size:26px;opacity:.8;margin-top:-14px}
+.countdown-empty{display:flex;gap:14px;align-items:center;color:var(--muted)}
+.countdown-empty svg{width:28px;height:28px;color:var(--orange)}
+.countdown-empty strong{color:var(--ink);font-size:15px}
+.countdown-empty p{font-size:12.5px}
+@media(max-width:1180px){.home{grid-template-columns:1fr;height:auto}.home-panel{max-height:none}.home-scroll{overflow:visible}}
+@media(max-width:640px){.countdown-card{flex-direction:column;align-items:flex-start}.countdown-clock b{font-size:26px}.home .goal-card p{font-size:17px}}
+body[data-view="inicio"] footer{display:none}
+body[data-view="inicio"] .content{padding-bottom:20px}
+.goal-date{text-transform:none}
+.goal-date::first-letter{text-transform:uppercase}
+.home{height:calc(100dvh - 215px)}
