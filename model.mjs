@@ -73,3 +73,20 @@ export function validateWorker(w, workers) {
   if (w.photo && !/^data:image\/(jpeg|png|webp);base64,/.test(w.photo)) throw new Error('La foto no es válida.');
   return {...w, name, role: String(w.role ?? '').trim().slice(0, 40) || 'Personal de obra', phone: String(w.phone ?? '').replace(/[^\d+ ]/g, '').trim().slice(0, 20)};
 }
+export function validateMilestone(m, rooms) {
+  const name = String(m.name ?? '').trim();
+  if (!name) throw new Error('Escribe el nombre de la entrega.');
+  if (name.length > 100) throw new Error('El nombre debe tener máximo 100 caracteres.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date || '')) throw new Error('Indica la fecha de la entrega.');
+  const roomIds = [...new Set(Array.isArray(m.roomIds) ? m.roomIds : [])];
+  if (roomIds.some(id => !rooms.some(r => r.id === id))) throw new Error('Una de las habitaciones seleccionadas no existe.');
+  return {...m, name, roomIds, notes: String(m.notes ?? '').trim().slice(0, 1000), done: !!m.done};
+}
+export function validateGoal(g) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(g.date || '')) throw new Error('Indica la fecha del objetivo.');
+  const text = String(g.text ?? '').trim();
+  if (text.length > 400) throw new Error('El objetivo debe tener máximo 400 caracteres.');
+  return {date: g.date, text};
+}
+export const daysBetween = (from, to) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+export const nextMilestone = (milestones, today) => [...milestones].filter(m => !m.done && m.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;

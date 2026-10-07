@@ -1,13 +1,13 @@
 import { workers as baseWorkers, plan } from './assets.mjs';
 import { Drive } from './drive.mjs';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
 
 const $ = selector => document.querySelector(selector);
 const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; }
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; }
 ensureState();
 let workers = [];
 function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
@@ -81,7 +81,7 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Inicio', 'Entregas, objetivo del día, habitaciones y avances de la obra.', 'Inicio'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
@@ -111,11 +111,11 @@ function render() {
   bars($('#bars-process'), processes.map(p => state.rooms.filter(r => r.process === p && r.status !== 'Finalizada').length));
   bars($('#bars-photos'), processes.map(p => uploaded.filter(r => r.process === p).length));
   $('#stat-photo-caption').textContent = pendingPhotos ? `${pendingPhotos} fotos pendientes de subir` : drive.connected ? 'Fotos consultadas en este proyecto' : 'Conecta Drive para consultar';
-  const clock = [countBy('Pendiente'), countBy('En proceso'), countBy('Finalizada')];
-  $('#status-clock').innerHTML = clock.map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
-  const review = countBy('En revisión');
-  $('#clock-tag').textContent = !total ? 'Sin registros' : review ? `${review} en revisión` : 'Al día';
-  $('#clock-tag').classList.toggle('ok', !!total && !review);
+  renderClock();
+  const goal = state.goals[today()]?.text;
+  $('#goal-today-text').textContent = goal || 'Aún no defines el objetivo de hoy.';
+  $('#goal-today-text').classList.toggle('goal-empty', !goal);
+  $('#goal-edit').firstChild.textContent = goal ? 'Cambiar objetivo ' : 'Definir objetivo ';
   $('#done-percent').textContent = `${total ? Math.round(countBy('Finalizada') / total * 100) : 0}%`;
   $('#done-date').textContent = dateLabel(new Date().toISOString());
   const progress = total ? Math.round(state.rooms.reduce((sum, r) => sum + statuses.indexOf(r.status), 0) / (total * (statuses.length - 1)) * 100) : 0;
@@ -181,6 +181,7 @@ function render() {
   renderTasks();
   renderMaterials();
   renderReports();
+  renderMilestones();
 }
 
 const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
@@ -219,7 +220,7 @@ function renderTasks() {
   const doneToday = todays.filter(t => t.status === 'Completada').length;
   $('#task-today-percent').textContent = `${todays.length ? Math.round(doneToday / todays.length * 100) : 0}%`;
   $('#task-today-date').textContent = dateLabel(new Date().toISOString());
-  $('#task-praise').textContent = !todays.length ? 'Anota tus asignaciones del día y márcalas al terminarlas.' : doneToday === todays.length ? '¡Buen trabajo! Completaste todas las tareas de hoy.' : `Te ${todays.length - doneToday === 1 ? 'queda 1 tarea' : `quedan ${todays.length - doneToday} tareas`} por completar hoy.`;
+  if (state.goals[today()]?.text) $('#task-praise').textContent = `Objetivo de hoy: ${state.goals[today()].text}`; else $('#task-praise').textContent = !todays.length ? 'Anota tus asignaciones del día y márcalas al terminarlas.' : doneToday === todays.length ? '¡Buen trabajo! Completaste todas las tareas de hoy.' : `Te ${todays.length - doneToday === 1 ? 'queda 1 tarea' : `quedan ${todays.length - doneToday} tareas`} por completar hoy.`;
   $('#task-targets').innerHTML = priorities.map(p => {
     const list = todays.filter(t => t.priority === p); const done = list.filter(t => t.status === 'Completada').length;
     return `<div class="target-row"><div><strong>${done}</strong><span>/${list.length}</span><small>Prioridad ${e(p.toLowerCase())}</small></div><div class="target-track"><span class="${priorityClass(p)}" style="width:${list.length ? done / list.length * 100 : 0}%"></span></div></div>`;
@@ -457,6 +458,101 @@ function renderReports() {
   $('#report-body').innerHTML = html;
   document.querySelectorAll('[data-report-room]').forEach(b => b.onclick = () => openRoom(b.dataset.reportRoom));
 }
+
+// ---------- Entregas y objetivos diarios ----------
+const longDate = d => new Intl.DateTimeFormat('es-CO', {weekday:'long', day:'numeric', month:'long', timeZone:'UTC'}).format(new Date(d + 'T12:00:00Z'));
+const shortDate = d => new Intl.DateTimeFormat('es-CO', {day:'numeric', month:'short', timeZone:'UTC'}).format(new Date(d + 'T12:00:00Z'));
+const addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const daysText = n => n === 0 ? 'Es hoy' : n === 1 ? 'Falta 1 día' : n > 1 ? `Faltan ${n} días` : n === -1 ? 'Venció ayer' : `Venció hace ${-n} días`;
+function renderClock() {
+  const next = nextMilestone(state.milestones, today());
+  if (next) {
+    const deadline = new Date(next.date + 'T23:59:00-05:00').getTime();
+    const ms = Math.max(0, deadline - Date.now());
+    const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), m = Math.floor(ms % 3600000 / 60000);
+    $('#clock-title').textContent = next.name.length > 24 ? next.name.slice(0, 23) + '…' : next.name;
+    $('#status-clock').innerHTML = [d, h, m].map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
+    $('#clock-legend').innerHTML = '<span>Días</span><span>Horas</span><span>Min</span>';
+    $('#clock-tag').textContent = shortDate(next.date);
+    $('#clock-tag').classList.toggle('ok', daysBetween(today(), next.date) > 3);
+    return;
+  }
+  const total = state.rooms.length, count = s => state.rooms.filter(r => r.status === s).length;
+  $('#clock-title').textContent = 'Estado general';
+  $('#status-clock').innerHTML = [count('Pendiente'), count('En proceso'), count('Finalizada')].map(n => `<span>${pad(n)}</span>`).join('<i>:</i>');
+  $('#clock-legend').innerHTML = '<span>Pendientes</span><span>En proceso</span><span>Finalizadas</span>';
+  const review = count('En revisión');
+  $('#clock-tag').textContent = !total ? 'Sin registros' : review ? `${review} en revisión` : 'Al día';
+  $('#clock-tag').classList.toggle('ok', !!total && !review);
+}
+function renderMilestones() {
+  if (view !== 'habitaciones') return;
+  const list = [...state.milestones].sort((a, b) => (a.done - b.done) || a.date.localeCompare(b.date));
+  $('#milestone-list').innerHTML = list.length ? list.map(m => {
+    const rooms = m.roomIds.map(id => state.rooms.find(r => r.id === id)).filter(Boolean);
+    const done = rooms.filter(r => r.status === 'Finalizada').length;
+    const left = daysBetween(today(), m.date);
+    const tone = m.done ? 'done' : left < 0 ? 'late' : left <= 3 ? 'soon' : 'ok';
+    return `<article class="milestone ${tone}"><div class="milestone-date"><b>${e(new Intl.DateTimeFormat('es-CO', {day:'2-digit', timeZone:'UTC'}).format(new Date(m.date + 'T12:00:00Z')))}</b><small>${e(new Intl.DateTimeFormat('es-CO', {month:'short', timeZone:'UTC'}).format(new Date(m.date + 'T12:00:00Z')))}</small></div><div class="milestone-body"><div class="milestone-top"><h3>${e(m.name)}</h3><span class="badge ${m.done ? 'done' : left < 0 ? 'off' : left <= 3 ? 'pending' : 'active'}">${m.done ? 'Entregada' : e(daysText(left))}</span></div><p>${e(longDate(m.date))}${m.notes ? ` · ${e(m.notes)}` : ''}</p>${rooms.length ? `<div class="room-progress"><div><span>Habitaciones finalizadas</span><span><b>${done}/${rooms.length}</b></span></div><div class="stage-track">${rooms.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}" title="Hab. ${e(r.number)} · ${e(r.status)}"></span>`).join('')}</div></div><div class="team-assignments">${rooms.map(r => `<button class="pill" data-ms-room="${e(r.id)}">Hab. ${e(r.number)} · ${e(r.status)}</button>`).join('')}</div>` : '<p class="muted">Sin habitaciones asociadas.</p>'}</div><button class="small-btn" data-ms-edit="${e(m.id)}">${icon('edit')}Editar</button></article>`;
+  }).join('') : `<div class="empty-state compact"><div class="empty-icon">${icon('flag')}</div><h3>Registra tu primera entrega</h3><p>Por ejemplo: «Primera entrega», con su fecha y las habitaciones que incluye.</p><button class="button primary" id="empty-new-ms">${icon('plus')}Nueva entrega</button></div>`;
+  $('#empty-new-ms')?.addEventListener('click', () => editMilestone());
+  document.querySelectorAll('[data-ms-edit]').forEach(b => b.onclick = () => editMilestone(b.dataset.msEdit));
+  document.querySelectorAll('[data-ms-room]').forEach(b => b.onclick = () => openRoom(b.dataset.msRoom));
+  const days = Array.from({length:7}, (_, i) => addDays(today(), i - 1));
+  const extra = [];
+  $('#goal-list').innerHTML = days.map(d => {
+    const g = state.goals[d]?.text, ms = state.milestones.filter(m => m.date === d);
+    return `<button class="goal-day ${d === today() ? 'today' : ''} ${d < today() ? 'past' : ''}" data-goal-day="${d}"><span class="goal-day-date"><b>${e(new Intl.DateTimeFormat('es-CO', {weekday:'short', timeZone:'UTC'}).format(new Date(d + 'T12:00:00Z')))}</b>${e(shortDate(d))}</span><span class="goal-day-text">${ms.map(m => `<em>${icon('flag')}${e(m.name)}</em>`).join('')}${g ? e(g) : `<i>${d === today() ? 'Define el objetivo de hoy' : d < today() ? 'Sin objetivo registrado' : 'Planear objetivo'}</i>`}</span></button>`;
+  }).join('') + (extra.length ? `<p class="goal-history">Objetivos anteriores</p>${extra.map(d => `<button class="goal-day past" data-goal-day="${d}"><span class="goal-day-date"><b>${e(new Intl.DateTimeFormat('es-CO', {weekday:'short', timeZone:'UTC'}).format(new Date(d + 'T12:00:00Z')))}</b>${e(shortDate(d))}</span><span class="goal-day-text">${e(state.goals[d].text)}</span></button>`).join('')}` : '');
+  document.querySelectorAll('[data-goal-day]').forEach(b => b.onclick = () => editGoal(b.dataset.goalDay));
+}
+function editGoal(date = today()) {
+  $('#goal-dialog').querySelector('.dialog-feedback')?.remove();
+  const form = $('#goal-form'); form.reset();
+  form.elements.date.value = date; form.elements.text.value = state.goals[date]?.text || '';
+  updateGoalHint();
+  $('#goal-dialog').showModal(); form.elements.text.focus();
+}
+function updateGoalHint() {
+  const d = $('#goal-form').elements.date.value, next = /^\d{4}-\d{2}-\d{2}$/.test(d) ? nextMilestone(state.milestones, d) : null;
+  $('#goal-milestone-hint').textContent = next ? `${next.name}: ${shortDate(next.date)} (${daysText(daysBetween(d, next.date)).toLowerCase()} desde esta fecha).` : 'Escribe qué debe quedar listo al final del día.';
+}
+$('#goal-form').elements.date.addEventListener('change', () => { const f = $('#goal-form').elements; f.text.value = state.goals[f.date.value]?.text || ''; updateGoalHint(); });
+$('#goal-form').addEventListener('submit', event => {
+  event.preventDefault();
+  try {
+    const g = validateGoal(Object.fromEntries(new FormData(event.target)));
+    if (g.text) state.goals[g.date] = {text: g.text, updatedAt: new Date().toISOString()}; else delete state.goals[g.date];
+    persist(); $('#goal-dialog').close(); render(); toast(g.text ? `Objetivo guardado para ${longDate(g.date)}.` : 'Objetivo eliminado.');
+  } catch (error) { errorToast(error); }
+});
+function editMilestone(id) {
+  const m = state.milestones.find(x => x.id === id);
+  $('#milestone-dialog').querySelector('.dialog-feedback')?.remove();
+  const form = $('#milestone-form'); form.reset();
+  $('#milestone-form-title').textContent = m ? 'Editar entrega' : 'Nueva entrega';
+  form.elements.id.value = m?.id || ''; form.elements.name.value = m?.name || ''; form.elements.date.value = m?.date || ''; form.elements.notes.value = m?.notes || ''; form.elements.done.checked = !!m?.done;
+  const rooms = [...state.rooms].sort((a, b) => a.level.localeCompare(b.level) || a.number.localeCompare(b.number, 'es', {numeric:true}));
+  $('#milestone-rooms').innerHTML = rooms.length ? rooms.map(r => `<label class="room-pick"><input type="checkbox" value="${e(r.id)}" ${m?.roomIds.includes(r.id) ? 'checked' : ''}><span>Hab. ${e(r.number)}<small>${e(r.level)}</small></span></label>`).join('') : '<p class="muted">Aún no hay habitaciones registradas.</p>';
+  $('#milestone-delete').hidden = !m; $('#milestone-delete').dataset.confirm = ''; $('#milestone-delete').textContent = 'Eliminar';
+  $('#milestone-dialog').showModal();
+}
+$('#milestone-form').addEventListener('submit', event => {
+  event.preventDefault();
+  try {
+    const f = event.target.elements, existing = state.milestones.find(m => m.id === f.id.value);
+    const m = validateMilestone({...existing, id: f.id.value || crypto.randomUUID(), name: f.name.value, date: f.date.value, notes: f.notes.value, done: f.done.checked, roomIds: [...document.querySelectorAll('#milestone-rooms input:checked')].map(i => i.value)}, state.rooms);
+    state.milestones = [...state.milestones.filter(x => x.id !== m.id), m]; persist(); $('#milestone-dialog').close();
+    if (view !== 'habitaciones') setView('habitaciones'); else render();
+    toast(existing ? 'Entrega actualizada.' : `Entrega «${m.name}» registrada para ${longDate(m.date)}.`);
+  } catch (error) { errorToast(error); }
+});
+$('#milestone-delete').onclick = () => {
+  const button = $('#milestone-delete');
+  if (!button.dataset.confirm) { button.dataset.confirm = '1'; button.textContent = '¿Eliminar? Confirmar'; return; }
+  const id = $('#milestone-form').elements.id.value;
+  state.milestones = state.milestones.filter(m => m.id !== id); persist(); $('#milestone-dialog').close(); render(); toast('Entrega eliminada.');
+};
 function editRoom(id) {
   const room = state.rooms.find(r => r.id === id);
   $('#room-dialog').querySelector('.dialog-feedback')?.remove();
@@ -646,7 +742,7 @@ $('#pick-folder').onclick = async () => {
     const checked = await drive.checkFolder(folder.id);
     if (state.rootId !== folder.id) {
       persist();
-      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
+      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive','milestones','goals']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
       else { state.rootId = folder.id; state.rootName = checked.name; }
       activeRoom = null; if ($('#detail-dialog').open) $('#detail-dialog').close();
     }
@@ -654,7 +750,10 @@ $('#pick-folder').onclick = async () => {
   } catch (error) { errorToast(error); }
 };
 $('#sync-button').onclick = () => synchronize().catch(errorToast);
-$('#new-room').onclick = $('#praise-new').onclick = () => editRoom();
+$('#new-room').onclick = () => editRoom();
+$('#goal-edit').onclick = () => editGoal();
+$('#milestone-new').onclick = () => editMilestone();
+setInterval(() => { if (!document.hidden) renderClock(); }, 30000);
 $('#heading-action').onclick = () => ({tareas:editTask, materiales:editMaterial, equipo:editWorker}[view] || editRoom)();
 $('#task-praise-new').onclick = $('#task-quick').onclick = () => editTask();
 $('#target-open').onclick = () => { taskScope = 'today'; render(); };
@@ -678,6 +777,8 @@ document.querySelectorAll('[data-add-action]').forEach(button => button.onclick 
   if (action === 'room') editRoom();
   else if (action === 'drive') openDriveSettings();
   else if (action === 'task') editTask();
+  else if (action === 'goal') editGoal();
+  else if (action === 'milestone') editMilestone();
   else if (action === 'material') editMaterial();
   else if (action === 'worker') editWorker();
   else if (state.rooms.length) { setView('habitaciones'); setRoomMode('cards'); render(); toast('Abre una habitación con «Fotos» para registrar su proceso.'); }

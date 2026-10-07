@@ -21,6 +21,9 @@ También puede alojarse como web estática en HTTPS, conservando la estructura d
 
 ## Uso
 
+- **Entregas** (en Inicio): registra cada entrega (por ejemplo, «Primera entrega», 9 de octubre) con las habitaciones que incluye; se ve cuántos días faltan y cuántas habitaciones están finalizadas. La tarjeta morada del resumen muestra la cuenta regresiva a la próxima entrega.
+- **Objetivo diario**: el objetivo cambia cada día; escríbelo en la tarjeta «Objetivo de hoy» o planea los próximos días en la sección «Objetivos diarios» del Inicio. También aparece en Tareas.
+
 - **Materiales**: registra cada pedido con cantidad, proveedor, habitación, quién lo pidió, estado (por pedir, pedido, recibido), valor total y lo pagado o abonado. Las tarjetas muestran lo gastado en el mes, lo pagado, lo que se debe y lo que falta por pedir; puedes filtrar por persona, estado y pago, seleccionar varios y marcarlos como pedidos, recibidos o pagados, y exportar a CSV.
 - **Equipo de obra**: agrega trabajadores (nombre, oficio, teléfono y foto opcional), edítalos o retíralos. No se puede retirar a alguien asignado a una habitación; su historial se conserva.
 - **Reportes**: avance por piso con mapa de habitaciones, gasto mensual, gasto por habitación, cuentas por proveedor y resumen del equipo. «Exportar reporte» abre la impresión para guardarlo en PDF.
