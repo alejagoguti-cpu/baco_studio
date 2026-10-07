@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fc6729"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
+  <title>BACO STUDIO · Control de obra</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#habitaciones" aria-label="Baco Studio inicio"><span>BACO</span><small>S T U D I O</small></a>
+    <div class="sidebar-label">ESPACIO DE TRABAJO</div>
+    <nav aria-label="Navegación principal">
+      <button class="nav-item active" data-view="habitaciones"><span class="nav-icon">▦</span> Habitaciones <span id="nav-count" class="nav-count">0</span></button>
+      <button class="nav-item" data-view="registro"><span class="nav-icon">▧</span> Registro fotográfico</button>
+      <button class="nav-item" data-view="equipo"><span class="nav-icon">♧</span> Equipo de obra <span class="nav-count">10</span></button>
+      <button class="nav-item" data-view="plano"><span class="nav-icon">⌑</span> Planta de referencia</button>
+    </nav>
+    <div class="sidebar-bottom"><div class="project-mark">B</div><div><strong>Baco Studio</strong><small>Arquitectura & obra</small></div></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="breadcrumb">Baco Studio <span>/</span> <strong id="breadcrumb-view">Habitaciones</strong></div><button id="drive-button" class="drive-button"><span class="status-dot"></span><span id="drive-status">Conectar Drive</span></button></header>
+    <div class="content">
+      <section class="page-heading"><div><p class="eyebrow">SEGUIMIENTO DE OBRA</p><h1 id="page-title">Cada espacio, un equipo.</h1><p id="page-subtitle">Habitaciones, responsables y avances. Todo en un mismo lugar.</p></div><button class="button primary" id="new-room">＋ Nueva habitación</button></section>
+      <section id="overview" class="stats" aria-label="Resumen de obra">
+        <div class="stat"><span>Habitaciones registradas</span><strong id="stat-rooms">00</strong><small>Espacios de trabajo</small></div>
+        <div class="stat"><span>En proceso</span><strong id="stat-active">00</strong><small>Intervenciones activas</small></div>
+        <div class="stat"><span>Equipo de obra</span><strong>10<span class="stat-unit"> personas</span></strong><small>Dos responsables por habitación</small></div>
+        <div class="stat"><span>Fotos en Drive</span><strong id="stat-photos">00</strong><small id="stat-photo-caption">Conecta Drive para consultar</small></div>
+      </section>
+      <section id="view-habitaciones" class="view">
+        <div class="feature"><div class="feature-text"><p class="eyebrow">DEL PLANO A LA OBRA</p><h2>La historia de cada<br>habitación empieza aquí.</h2><p>Asigna a los dos maestros encargados y documenta cada proceso, desde el inicio hasta la entrega.</p><button class="text-button" id="show-plan">Explorar la planta <span>↗</span></button></div><button class="plan-preview" id="plan-preview" aria-label="Abrir planta de referencia"><img id="plan-image" alt="Planta arquitectónica proporcionada por Baco Studio"><span>PLANTA DE REFERENCIA <span>↗</span></span></button></div>
+        <div class="section-heading"><div><p class="eyebrow">ESPACIOS DE INTERVENCIÓN</p><h2>Habitaciones</h2></div><div class="filters"><label class="search"><span>⌕</span><input id="search" placeholder="Buscar habitación o maestro" aria-label="Buscar habitación o maestro"></label><select id="status-filter" aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></div></div>
+        <div class="room-view-controls" role="group" aria-label="Vista de habitaciones"><button class="selected" data-room-mode="cards">Tarjetas</button><button data-room-mode="list">Lista</button><button data-room-mode="sectors">Por sector</button></div>
+        <div class="room-workspace"><div id="room-grid" class="room-grid"></div><aside class="activity-rail"><section class="rail-card"><div class="rail-heading"><h3>Estado del proyecto</h3><span>↗</span></div><div id="status-summary"></div></section><section class="rail-card"><div class="rail-heading"><h3>Actividad reciente</h3><span>◷</span></div><div id="recent-activity"></div></section><section class="drive-callout"><span class="callout-icon">▧</span><h3>Un archivo para<br>todo el equipo.</h3><p>Las fotografías del proceso se organizan por habitación en Google Drive.</p><button class="text-button" id="rail-connect">Configurar Drive ↗</button></section></aside></div>
+      </section>
+      <section id="view-registro" class="view" hidden><div class="section-heading"><h2>Registro fotográfico</h2><button class="button secondary" id="sync-button">↻ Actualizar desde Drive</button></div><p class="muted">Selecciona una habitación para registrar su proceso. Las fotos pendientes se conservan en este dispositivo hasta subirlas.</p><div id="global-gallery" class="gallery"></div></section>
+      <section id="view-equipo" class="view" hidden><div class="section-heading"><h2>Las personas detrás de la obra</h2><span class="pill">10 integrantes</span></div><p class="muted">Selecciona dos personas distintas al crear o editar cada habitación.</p><div id="team-grid" class="team-grid"></div></section>
+      <section id="view-plano" class="view" hidden><div class="section-heading"><h2>Planta de referencia</h2><a id="download-plan" class="button secondary" download="Baco-Studio-planta.png">↓ Descargar planta</a></div><p class="muted">Plano suministrado. La numeración y la correspondencia espacial de las habitaciones están pendientes de confirmar.</p><div class="full-plan"><img id="full-plan-image" alt="Planta arquitectónica original sin modificar"></div></section>
+      <footer><span>BACO STUDIO</span><span>Diseñar. Construir. Documentar.</span><button id="export-button">Exportar respaldo</button></footer>
+    </div>
+  </main>
+  <dialog id="room-dialog"><form id="room-form"><div class="dialog-heading"><div><p class="eyebrow">ORGANIZACIÓN DE OBRA</p><h2 id="room-form-title">Nueva habitación</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><div class="form-row"><label>Habitación<input name="number" required maxlength="30" placeholder="Ej. 219"></label><label>Piso o sector<input name="level" required maxlength="60" placeholder="Ej. Segundo piso"></label></div><label>Proceso de obra<select name="process" id="room-process" required></select></label><div class="form-row"><label>Maestro encargado 1<select name="worker1" required></select></label><label>Maestro encargado 2<select name="worker2" required></select></label></div><label>Estado<select name="status"><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="Alcance, pendientes o indicaciones para el equipo"></textarea></label><p class="form-note">Las asignaciones se guardan en este dispositivo. Al sincronizar, también se guardan en la carpeta de Drive del proyecto.</p><div class="dialog-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar habitación</button></div></form></dialog>
+  <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
+  <dialog id="drive-dialog"><form id="drive-form"><div class="dialog-heading"><div><p class="eyebrow">ARCHIVO DEL PROYECTO</p><h2>Google Drive</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><p>Las fotos se organizan en <strong>Proyecto → Habitación → Proceso</strong>. Cada foto conserva fecha, responsables y observaciones.</p><label>ID de cliente de Google<input name="clientId" required placeholder="…apps.googleusercontent.com" autocomplete="off"></label><details><summary>Vincular una carpeta existente</summary><p class="form-note">Para seleccionar una carpeta compartida, configura Google Picker con una clave de API y el número de proyecto del mismo proyecto de Google Cloud.</p><label>Clave de API de Google Picker<input name="apiKey" autocomplete="off"></label><label>Número del proyecto de Google Cloud<input name="appId" inputmode="numeric"></label></details><div class="connection-info" id="connection-info"></div><p class="form-note">Si todavía no tienes la configuración, puedes organizar habitaciones y guardar fotos pendientes. Necesitas una cuenta de Google con permiso de edición para subir al Drive.</p><div class="dialog-actions"><button type="button" class="button secondary" id="disconnect-button">Desconectar</button><button class="button primary" type="submit">Guardar y conectar</button></div><button type="button" class="text-button" id="pick-folder">Seleccionar carpeta de Drive ↗</button></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body></html>
