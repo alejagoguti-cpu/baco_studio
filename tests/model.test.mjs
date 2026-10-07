@@ -80,3 +80,11 @@ test('finds the next open delivery and counts days', () => {
   assert.equal(nextMilestone(ms,'2026-10-06').id,'b');
   assert.equal(nextMilestone([], '2026-10-06'), null);
 });
+import {validateProcessName} from '../model.mjs';
+test('adds custom processes without duplicates and accepts them in rooms', () => {
+  assert.equal(validateProcessName('  instalación   de cielo raso ', ['Pintura y acabados']), 'Instalación de cielo raso');
+  assert.throws(() => validateProcessName('pintura y ACABADOS', ['Pintura y acabados']));
+  assert.throws(() => validateProcessName('ab', []));
+  assert.throws(() => validateRoom({...room,process:'Cielo raso'},[],workers));
+  assert.equal(validateRoom({...room,process:'Cielo raso'},[],workers,['Cielo raso']).process,'Cielo raso');
+});
