@@ -4,10 +4,10 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261007a">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs"></script>
+  <script type="module" src="app.mjs?v=20261007a"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -120,10 +120,10 @@
     <div class="content">
       <section class="page-heading">
         <div><h1 id="page-title">Inicio</h1><p id="page-subtitle">Objetivo del día y entregas de la obra.</p></div>
-        <button class="button primary" id="heading-action"><svg><use href="#i-plus"/></svg>Nueva habitación</button>
+        <button class="button primary" id="heading-action"><svg><use href="#i-plus"/></svg>Nueva entrega</button>
       </section>
 
-      <section id="overview" class="stats" aria-label="Resumen de obra">
+      <section id="overview" class="stats" aria-label="Resumen de obra" hidden>
         <div class="stat"><div class="stat-label"><svg><use href="#i-room"/></svg>Habitaciones</div><div class="stat-row"><strong id="stat-rooms">00</strong><div class="mini-bars" id="bars-rooms" aria-hidden="true"></div></div><small>Por estado de obra</small></div>
         <div class="stat"><div class="stat-label"><svg><use href="#i-clock"/></svg>En proceso</div><div class="stat-row"><strong id="stat-active">00</strong><div class="mini-bars" id="bars-process" aria-hidden="true"></div></div><small>Por proceso activo</small></div>
         <div class="stat"><div class="stat-label"><svg><use href="#i-camera"/></svg>Fotos en Drive</div><div class="stat-row"><strong id="stat-photos">00</strong><div class="mini-bars" id="bars-photos" aria-hidden="true"></div></div><small id="stat-photo-caption">Conecta Drive para consultar</small></div>

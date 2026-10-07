@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs';
-import { Drive } from './drive.mjs';
-import { enhanceSelects, syncSelects } from './select.mjs';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007a';
+import { Drive } from './drive.mjs?v=20261007a';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007a';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007a';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -106,7 +106,7 @@ function setView(next) {
   render();
 }
 function avatar(id, extra = '') { const w = worker(id); return w ? `<img class="avatar ${extra}" src="${photoOf(w)}" alt="${e(w.name)}" loading="lazy">` : ''; }
-function render() {
+function renderCore() {
   const total = state.rooms.length;
   const countBy = status => state.rooms.filter(r => r.status === status).length;
   const uploaded = state.records.filter(r => !r.pending);
@@ -175,12 +175,13 @@ function render() {
   document.querySelectorAll('[data-worker-edit]').forEach(b => b.onclick = () => editWorker(b.dataset.workerEdit));
   document.querySelectorAll('[data-team-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.teamRoom)));
   if (view === 'registro') renderGallery($('#global-gallery'), state.records);
-  renderTasks();
-  renderMaterials();
-  renderReports();
-  renderMilestones();
-  renderPlans();
-  enhance(document);
+}
+function safely(name, fn) {
+  try { const out = fn(); if (out?.catch) out.catch(error => console.error(`[Baco Studio] ${name}`, error)); }
+  catch (error) { console.error(`[Baco Studio] ${name}`, error); }
+}
+function render() {
+  for (const [name, fn] of [['resumen', renderCore], ['tareas', renderTasks], ['materiales', renderMaterials], ['reportes', renderReports], ['entregas', renderMilestones], ['planos', renderPlans], ['listas', () => enhance(document)]]) safely(name, fn);
 }
 
 const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
