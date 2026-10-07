@@ -113,3 +113,18 @@ test('bitácora diaria: una actividad por día y la más reciente manda', async 
   assert.equal(lastActivity({log}, '2026-10-06').date, '2026-10-06');
   assert.equal(activityOn({log}, '2026-10-08'), null);
 });
+
+test('sincronización: estado ↔ filas y diferencias', async () => {
+  const { toItems, fromItems, diff } = await import('../sync.mjs');
+  const st = {rooms:[{id:'a',number:'214'}], tasks:[], materials:[], milestones:[], customWorkers:[], records:[{id:'r1',pending:true},{id:'r2',fileId:'x'}], goals:{'2026-10-07':{text:'x'}}, customProcesses:[], rootId:'F', rootName:'Obra', plans:{arq:{name:'p'}}};
+  const m = toItems(st);
+  assert.ok(m.has('records\u0000r2')); assert.ok(!m.has('records\u0000r1'));
+  const back = fromItems(m, st);
+  assert.equal(back.rooms[0].number, '214'); assert.equal(back.rootId, 'F');
+  assert.deepEqual(back.records.map(r => r.id).sort(), ['r1','r2']);
+  assert.deepEqual(back.plans, st.plans);
+  const m2 = toItems({...st, rooms:[{id:'a',number:'215'}], tasks:[{id:'t'}]});
+  const d = diff(m, m2);
+  assert.deepEqual(d.upserts.sort(), ['rooms\u0000a','tasks\u0000t']); assert.deepEqual(d.deletes, []);
+  assert.deepEqual(diff(m2, m).deletes, ['tasks\u0000t']);
+});
