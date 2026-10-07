@@ -780,3 +780,16 @@ body.collapsed .brand-logo{width:44px;height:44px}
 .goal-date-pick input{position:absolute;inset:0;opacity:0;width:100%;padding:0;border:0;pointer-events:none}
 .goal-today{border:0;background:#fff;color:#5a524c;font-size:11px;font-weight:700;border-radius:14px;padding:5px 10px;cursor:pointer;margin-left:2px}
 @media(max-width:640px){.goal-head{flex-wrap:wrap}.goal-nav{width:100%;justify-content:space-between}}
+/* Inicio de sesión */
+.auth-gate{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:24px 16px;overflow:auto;background:radial-gradient(1200px 600px at 20% 0%,#f7ede6,transparent),var(--bg,#f8f7f4)}
+.auth-gate[hidden]{display:none}
+.auth-card{width:min(440px,100%);background:#fff;border:1px solid var(--line);border-radius:28px;padding:32px 24px 20px;text-align:center;box-shadow:0 30px 80px #1d1b2214}
+.auth-logo{width:72px;height:72px;border-radius:50%;border:1px solid var(--line);object-fit:cover}
+.auth-eyebrow{font-size:10.5px;letter-spacing:2px;font-weight:700;color:var(--muted);margin:14px 0 4px}
+.auth-card h1{font-size:26px;letter-spacing:-.6px}
+.auth-sub{font-size:13px;color:var(--muted);margin:4px 0 14px}
+.auth-message{font-size:13px;color:var(--ink-2);margin:10px 0}
+#clerk-sign-in{display:flex;justify-content:center}
+body.auth-locked{overflow:hidden}
+body.auth-locked>.sidebar,body.auth-locked>main{visibility:hidden}
+@media(max-width:480px){.auth-card{padding:24px 12px 12px;border-radius:22px}}

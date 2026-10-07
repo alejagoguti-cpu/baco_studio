@@ -5,12 +5,13 @@
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=20261007j">
+  <link rel="stylesheet" href="styles.css?v=20261007k">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs?v=20261007j"></script>
+  <script type="module" src="app.mjs?v=20261007k"></script>
 </head>
-<body>
+<body class="auth-locked">
+  <div id="auth-gate" class="auth-gate"><div class="auth-card"><img class="auth-logo" src="logo.png" alt="Baco Studio"><p class="auth-eyebrow">CONTROL DE OBRA</p><h1>Inicia sesión</h1><p class="auth-sub">Solo el equipo de la obra puede entrar.</p><p class="auth-message" id="auth-message">Cargando…</p><div id="clerk-sign-in"></div></div></div>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
@@ -95,6 +96,7 @@
     <div class="sidebar-bottom">
       <button class="nav-item" id="sidebar-drive"><svg><use href="#i-settings"/></svg><span>Configuración</span></button>
       <button class="nav-item" id="export-button"><svg><use href="#i-download"/></svg><span>Exportar respaldo</span></button>
+      <button class="nav-item" data-sign-out><svg><use href="#i-left"/></svg><span>Cerrar sesión</span></button>
     </div>
   </aside>
   <div class="scrim" id="scrim" hidden></div>
@@ -107,7 +109,7 @@
         <button class="bell" id="bell" aria-label="Fotos pendientes"><svg><use href="#i-bell"/></svg></button>
         <span class="pending-pill" id="pending-pill" hidden></span>
         <button id="drive-button" class="drive-button"><span class="status-dot"></span><span id="drive-status">Conectar Drive</span></button>
-        <div class="user-chip"><img class="user-mark" src="logo.png" alt=""><span><strong>Baco Studio</strong><small id="breadcrumb-view">Inicio</small></span></div>
+        <div class="user-chip"><img class="user-mark" src="logo.png" alt="" data-user-photo><span><strong data-user-name>Baco Studio</strong><small id="breadcrumb-view">Inicio</small></span></div>
       </div>
     </header>
 

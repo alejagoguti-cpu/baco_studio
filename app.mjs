@@ -1,7 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007j';
-import { Drive } from './drive.mjs?v=20261007j';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007j';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007j';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007k';
+import { Drive } from './drive.mjs?v=20261007k';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007k';
+import { initAuth } from './auth.mjs?v=20261007k';
+initAuth();
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007k';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
