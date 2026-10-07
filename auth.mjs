@@ -59,10 +59,14 @@ function showUser(user) {
   document.querySelectorAll('[data-user-photo]').forEach(img => { if (user.imageUrl) { img.src = user.imageUrl; img.alt = name; } });
 }
 
-export async function initAuth() {
+export const getToken = async () => window.Clerk?.session ? window.Clerk.session.getToken() : null;
+export const currentEmail = () => window.Clerk?.user?.primaryEmailAddress?.emailAddress || '';
+
+export async function initAuth({ onUser } = {}) {
+  let lastUser = null;
   const gate = document.getElementById('auth-gate'), box = document.getElementById('clerk-sign-in'), msg = document.getElementById('auth-message');
   const lock = () => { document.body.classList.add('auth-locked'); gate.hidden = false; };
-  const unlock = user => { document.body.classList.remove('auth-locked'); gate.hidden = true; showUser(user); };
+  const unlock = user => { document.body.classList.remove('auth-locked'); gate.hidden = true; showUser(user); if (lastUser !== user.id) { lastUser = user.id; onUser?.(user); } };
   lock();
   try {
     await Promise.race([loadScript(frontendApi(CLERK_PUBLISHABLE_KEY)), new Promise((_, r) => setTimeout(() => r(new Error('El inicio de sesión tardó demasiado. Revisa tu conexión y recarga.')), 15000))]);

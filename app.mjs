@@ -1,9 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007k';
-import { Drive } from './drive.mjs?v=20261007k';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007k';
-import { initAuth } from './auth.mjs?v=20261007k';
-initAuth();
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007k';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007l';
+import { Drive } from './drive.mjs?v=20261007l';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007l';
+import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007l';
+import { createSync } from './sync.mjs?v=20261007l';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007l';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -45,7 +45,9 @@ const cop = n => new Intl.NumberFormat('es-CO', {style:'currency', currency:'COP
 const workerName = id => worker(id)?.name || 'Responsable pendiente';
 const options = (values, selected) => values.map(v => `<option value="${e(v)}" ${v === selected ? 'selected' : ''}>${e(v)}</option>`).join('');
 const workerOptions = selected => '<option value="">Seleccionar maestro</option>' + workers.map(w => `<option value="${w.id}" ${w.id === selected ? 'selected' : ''}>${e(w.name)}</option>`).join('');
-const persist = () => { localStorage.setItem('baco.state', JSON.stringify(state)); if (state.rootId) localStorage.setItem(`baco.project.${state.rootId}`, JSON.stringify(state)); };
+const saveLocal = () => { localStorage.setItem('baco.state', JSON.stringify(state)); if (state.rootId) localStorage.setItem(`baco.project.${state.rootId}`, JSON.stringify(state)); };
+let sync = { schedule() {} };
+const persist = () => { saveLocal(); sync.schedule(); };
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('#toast').hidden = true, 6500); }
 function errorToast(error) {
   const message = error.message || 'No se pudo completar la operación.';
@@ -1032,4 +1034,17 @@ $('#export-button').onclick = () => {
   toast('Respaldo de habitaciones y metadatos exportado. Las fotos pendientes permanecen en este dispositivo.');
 };
 setInterval(() => { if (!drive.connected && $('#drive-button').classList.contains('connected')) render(); }, 30000);
+// ---------- Datos compartidos (Supabase) ----------
+const syncLabels = {connecting:['Conectando…','wait'], saving:['Guardando…','wait'], saved:['Guardado en la nube','ok'], offline:['Sin conexión · se guarda al volver','warn'], error:['No se pudo guardar · reintentando','warn'], 'no-access':['Sin acceso a datos compartidos','warn']};
+function setSyncStatus(st) {
+  const el = $('#sync-status'); const [text, tone] = syncLabels[st] || ['', ''];
+  el.hidden = !text; el.textContent = text; el.dataset.tone = tone;
+  if (st === 'no-access') toast('Tu correo aún no está en el equipo de la obra. Pídele a Alejandra que te agregue; mientras tanto ves solo los datos de este dispositivo.');
+}
+sync = createSync({
+  getToken, who: currentEmail, getState: () => state,
+  setState: next => { state = next; ensureState(); refreshWorkers(); saveLocal(); render(); if ($('#detail-dialog').open) renderDetail(); },
+  onStatus: setSyncStatus, onError: error => console.warn('Sincronización:', error),
+});
+initAuth({ onUser: () => sync.start() });
 setView('inicio');
