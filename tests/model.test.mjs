@@ -25,3 +25,18 @@ test('escapes untrusted room notes and only produces valid Drive links', () => {
   assert.equal(safeDriveLink('javascript:bad'),'');
   assert.equal(safeDriveLink('abc_123'), 'https://drive.google.com/file/d/abc_123/view');
 });
+import {validateTask, sortTasks} from '../model.mjs';
+test('validates tasks against real rooms and workers', () => {
+  const task = {id:'t',title:'  Revisar enchape  ',status:'Pendiente',priority:'Alta',date:'2026-10-07',time:'09:30',roomId:'r',workerId:'a'};
+  assert.equal(validateTask(task,[room],workers).title,'Revisar enchape');
+  assert.throws(() => validateTask({...task,title:' '},[room],workers));
+  assert.throws(() => validateTask({...task,priority:'Urgente'},[room],workers));
+  assert.throws(() => validateTask({...task,date:''},[room],workers));
+  assert.throws(() => validateTask({...task,roomId:'x'},[room],workers));
+  assert.throws(() => validateTask({...task,workerId:'x'},[room],workers));
+  assert.doesNotThrow(() => validateTask({...task,roomId:'',workerId:'',time:''},[],workers));
+});
+test('sorts open tasks by deadline before completed ones', () => {
+  const t = (id, date, status='Pendiente', time='') => ({id,date,status,time,priority:'Media'});
+  assert.deepEqual(sortTasks([t('c','2026-10-01','Completada'),t('b','2026-10-08'),t('a','2026-10-07','En progreso','08:00')]).map(x => x.id), ['a','b','c']);
+});
