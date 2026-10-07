@@ -98,3 +98,17 @@ export function validateProcessName(name, existing) {
   if (existing.some(p => norm(p) === norm(clean))) throw new Error('Ese proceso ya existe.');
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
+// Bitácora diaria: una actividad por habitación y por día.
+export function validateActivity(a, workers, procs) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.date || '')) throw new Error('Indica la fecha de la actividad.');
+  if (!procs.includes(a.activity)) throw new Error('Selecciona la actividad del día.');
+  const ids = [...new Set(Array.isArray(a.workers) ? a.workers : [])];
+  if (!ids.length) throw new Error('Selecciona al menos una persona que trabajó en la actividad.');
+  if (ids.some(id => !workers.some(w => w.id === id))) throw new Error('Una de las personas seleccionadas no existe.');
+  return {date: a.date, activity: a.activity, workers: ids, notes: String(a.notes ?? '').trim().slice(0, 500), updatedAt: a.updatedAt || new Date().toISOString()};
+}
+export function upsertActivity(log, entry) {
+  return [...(log || []).filter(x => x.date !== entry.date), entry].sort((a, b) => b.date.localeCompare(a.date));
+}
+export const activityOn = (room, date) => (room.log || []).find(x => x.date === date) || null;
+export const lastActivity = (room, upTo) => (room.log || []).filter(x => x.date <= upTo).sort((a, b) => b.date.localeCompare(a.date))[0] || null;
