@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007f';
-import { Drive } from './drive.mjs?v=20261007f';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007f';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007f';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007g';
+import { Drive } from './drive.mjs?v=20261007g';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007g';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007g';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -23,6 +23,9 @@ let activeRoom = null;
 let taskScope = 'all';
 let view = 'inicio';
 let roomMode = 'cards';
+let roomDay = '';
+const viewDay = () => roomDay || today();
+const shiftDay = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 let syncing = false;
 let uploadBusy = false;
 const urls = new Map();
@@ -134,9 +137,14 @@ function renderCore() {
   $('#drive-status').textContent = drive.connected ? 'Drive conectado' : 'Conectar Drive';
   $('#drive-button').classList.toggle('connected', drive.connected);
 
-  const rooms = filterRooms(state.rooms, $('#search').value, $('#status-filter').value, workers);
+  const day = viewDay(), actFilter = $('#activity-filter').value;
+  const rooms = filterRooms(state.rooms, $('#search').value, $('#status-filter').value, workers).filter(r => actFilter === 'all' || (actFilter === 'with') === !!activityOn(r, day));
+  const dayTag = day === today() ? 'Hoy' : day === shiftDay(today(), -1) ? 'Ayer' : new Intl.DateTimeFormat('es-CO', {weekday:'short', day:'numeric', month:'short', timeZone:'UTC'}).format(new Date(day + 'T12:00:00Z'));
+  $('#day-label').textContent = dayTag; $('#day-filter').value = day; $('#day-filter').max = today();
+  $('#day-next').disabled = day >= today(); $('#day-today').hidden = day === today();
+  const withAct = state.rooms.filter(r => activityOn(r, day)).length;
   $('#rooms-count').textContent = rooms.length;
-  $('#rooms-sub').textContent = roomMode === 'sectors' ? 'Mapa de habitaciones agrupadas por piso o sector.' : roomMode === 'list' ? `Mostrando ${rooms.length} de ${total} habitaciones.` : 'Asignaciones y estado de cada espacio.';
+  $('#rooms-sub').textContent = roomMode === 'sectors' ? 'Mapa de habitaciones agrupadas por piso o sector.' : roomMode === 'list' ? `Mostrando ${rooms.length} de ${total} habitaciones.` : `${withAct} de ${total} ${total === 1 ? 'habitación' : 'habitaciones'} con actividad ${day === today() ? 'hoy' : `el ${longDate(day)}`}.`;
   for (const id of [...selected]) if (!rooms.some(r => r.id === id)) selected.delete(id);
   const grid = $('#room-grid');
   if (!rooms.length) {
@@ -159,14 +167,14 @@ function renderCore() {
     grid.innerHTML = rooms.map(room => {
       const records = state.records.filter(r => r.roomId === room.id);
       const step = statuses.indexOf(room.status) + 1;
-      const act = activityOn(room, today()), last = act ? null : lastActivity(room, today());
+      const act = activityOn(room, day), last = act ? null : lastActivity(room, day);
       const crew = act ? act.workers : room.workers;
-      return `<article class="room-card"><div class="room-card-top"><span class="room-tile">${e(room.number)}</span><div class="room-title"><strong>Habitación ${e(room.number)}</strong><span>${e(room.level)} · ${records.filter(r => !r.pending).length} fotos · ${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-progress"><div><span>Avance de etapa</span><span><b>${step}/${statuses.length}</b></span></div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i < step ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div></div><div class="room-today ${act ? '' : 'empty'}"><div class="room-today-head"><small>HOY · ${e(shortDate(today()))}</small><button class="text-button" data-activity="${e(room.id)}">${act ? `${icon('edit')}Cambiar` : '+ Anotar actividad'}</button></div><strong>${act ? e(act.activity) : 'Sin actividad registrada'}</strong>${act?.notes ? `<span>${e(act.notes)}</span>` : last ? `<span>Última: ${e(shortDate(last.date))} · ${e(last.activity)}</span>` : ''}</div><div class="room-workers">${crew.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><button class="text-button" data-room="${e(room.id)}">Ver detalles</button><button class="small-btn" data-edit-room="${e(room.id)}">Editar</button><button class="small-btn indigo" data-room="${e(room.id)}">${icon('camera')}Fotos</button></div></article>`;
+      return `<article class="room-card"><div class="room-card-top"><span class="room-tile">${e(room.number)}</span><div class="room-title"><strong>Habitación ${e(room.number)}</strong><span>${e(room.level)} · ${records.filter(r => !r.pending).length} fotos · ${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-progress"><div><span>Avance de etapa</span><span><b>${step}/${statuses.length}</b></span></div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i < step ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div></div><div class="room-today ${act ? '' : 'empty'}"><div class="room-today-head"><small>${day === today() ? 'HOY' : e(new Intl.DateTimeFormat('es-CO', {weekday:'short', timeZone:'UTC'}).format(new Date(day + 'T12:00:00Z')).toUpperCase())} · ${e(shortDate(day))}</small><button class="text-button" data-activity="${e(room.id)}">${act ? `${icon('edit')}Cambiar` : '+ Anotar actividad'}</button></div><strong>${act ? e(act.activity) : day === today() ? 'Sin actividad registrada' : 'No se registró actividad'}</strong>${act?.notes ? `<span>${e(act.notes)}</span>` : last ? `<span>Última: ${e(shortDate(last.date))} · ${e(last.activity)}</span>` : ''}</div><div class="room-workers">${crew.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><button class="text-button" data-room="${e(room.id)}">Ver detalles</button><button class="small-btn" data-edit-room="${e(room.id)}">Editar</button><button class="small-btn indigo" data-room="${e(room.id)}">${icon('camera')}Fotos</button></div></article>`;
     }).join('');
   }
   grid.classList.toggle('list-mode', roomMode !== 'cards' && rooms.length > 0);
   grid.querySelectorAll('[data-room]').forEach(button => button.onclick = () => openRoom(button.dataset.room));
-  grid.querySelectorAll('[data-activity]').forEach(button => button.onclick = () => editActivity(button.dataset.activity));
+  grid.querySelectorAll('[data-activity]').forEach(button => button.onclick = () => editActivity(button.dataset.activity, viewDay()));
   grid.querySelectorAll('[data-edit-room]').forEach(button => button.onclick = () => editRoom(button.dataset.editRoom));
   grid.querySelectorAll('[data-list-room]').forEach(button => button.onclick = () => openRoom(button.dataset.listRoom));
   $('#selection-bar').hidden = !(view === 'habitaciones' && roomMode === 'list' && selected.size);
@@ -979,6 +987,13 @@ $('#selection-export').onclick = () => {
 };
 $('#search').oninput = () => { if (view !== 'habitaciones') setView('habitaciones'); else render(); };
 $('#status-filter').onchange = render;
+$('#activity-filter').onchange = render;
+const setRoomDay = d => { roomDay = !d || d >= today() ? '' : d; render(); };
+$('#day-prev').onclick = () => setRoomDay(shiftDay(viewDay(), -1));
+$('#day-next').onclick = () => setRoomDay(shiftDay(viewDay(), 1));
+$('#day-today').onclick = () => setRoomDay('');
+$('#day-filter').onchange = e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setRoomDay(e.target.value); };
+document.querySelector('.day-pick').addEventListener('click', e => { if (e.target.id !== 'day-filter') { try { $('#day-filter').showPicker(); } catch { $('#day-filter').focus(); } } });
 document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => { if (button.dataset.roomNav) setRoomMode(button.dataset.roomNav); setView(button.dataset.view); });
 document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => button.closest('dialog').close());
 

@@ -753,3 +753,15 @@ body.collapsed .brand-logo{width:44px;height:44px}
 .worker-pick span{display:flex;align-items:center;gap:7px;font-size:12.5px}
 .worker-pick .avatar{width:24px;height:24px}
 @media(max-width:640px){.log-item{grid-template-columns:52px minmax(0,1fr)}.log-avatars{display:none}.log-heading{flex-wrap:wrap}}
+/* Filtro por día en Habitaciones */
+.day-nav{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:20px;background:#fff;padding:2px}
+.day-step{width:30px;height:30px;border:0;background:none;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.day-step svg{width:15px;height:15px;transform:rotate(90deg)}.day-step.next svg{transform:rotate(-90deg)}
+.day-step:hover:not(:disabled){background:var(--line-2)}.day-step:disabled{opacity:.3;cursor:default}
+.day-pick{position:relative;display:flex!important;flex-direction:row!important;align-items:center;gap:6px!important;margin:0!important;padding:0 8px;font-size:12.5px!important;font-weight:600!important;color:var(--ink);cursor:pointer;text-transform:capitalize;white-space:nowrap}
+.day-pick svg{width:15px;height:15px;color:var(--orange-2)}
+.day-pick input{position:absolute;inset:0;opacity:0;width:100%;padding:0;border:0;pointer-events:none}
+.day-today{border:0;background:var(--orange-soft);color:#6b4b3a;font-size:11.5px;font-weight:600;border-radius:14px;padding:6px 10px;cursor:pointer;margin-left:2px}
+@media(max-width:640px){.day-nav{flex:1 1 100%;justify-content:space-between}}
+.day-pick{text-transform:none}#day-label{display:inline-block}#day-label::first-letter{text-transform:uppercase}
+@media(max-width:640px){.rooms-panel .panel-tools .select-pill{flex:1 1 0;min-width:0}}

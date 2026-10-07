@@ -5,10 +5,10 @@
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=20261007f">
+  <link rel="stylesheet" href="styles.css?v=20261007g">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs?v=20261007f"></script>
+  <script type="module" src="app.mjs?v=20261007g"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -141,7 +141,8 @@
             <div class="panel-heading">
               <div><h2>Habitaciones <span class="count-chip" id="rooms-count">0</span></h2><p class="panel-sub" id="rooms-sub">Asignaciones y estado de cada espacio.</p></div>
               <div class="panel-tools">
-                
+                <div class="day-nav" role="group" aria-label="Día que estás revisando"><button type="button" class="day-step" id="day-prev" aria-label="Día anterior"><svg><use href="#i-chevron"/></svg></button><label class="day-pick"><svg><use href="#i-calendar"/></svg><span id="day-label">Hoy</span><input type="date" id="day-filter" aria-label="Escoger día"></label><button type="button" class="day-step next" id="day-next" aria-label="Día siguiente"><svg><use href="#i-chevron"/></svg></button><button type="button" class="day-today" id="day-today" hidden>Hoy</button></div>
+                <label class="select-pill"><svg><use href="#i-task"/></svg><select id="activity-filter" aria-label="Filtrar por actividad del día"><option value="all">Toda actividad</option><option value="with">Con actividad</option><option value="without">Sin actividad</option></select></label>
                 <label class="select-pill"><svg><use href="#i-filter"/></svg><select id="status-filter" aria-label="Filtrar por estado"><option value="all">Todos los estados</option><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label>
               </div>
             </div>
