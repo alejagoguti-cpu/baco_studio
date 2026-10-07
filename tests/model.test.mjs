@@ -40,3 +40,28 @@ test('sorts open tasks by deadline before completed ones', () => {
   const t = (id, date, status='Pendiente', time='') => ({id,date,status,time,priority:'Media'});
   assert.deepEqual(sortTasks([t('c','2026-10-01','Completada'),t('b','2026-10-08'),t('a','2026-10-07','En progreso','08:00')]).map(x => x.id), ['a','b','c']);
 });
+import {validateMaterial, materialStats, paymentStatus, parseMoney, validateWorker} from '../model.mjs';
+test('validates material orders and payments', () => {
+  const m = {id:'m',name:' Cemento gris ',quantity:'10',unit:'bultos',orderStatus:'Pedido',total:'350.000',paid:'100000',date:'2026-10-06',requestedBy:'a',roomId:'r'};
+  const v = validateMaterial(m,[room],workers);
+  assert.equal(v.name,'Cemento gris'); assert.equal(v.total,350000); assert.equal(v.quantity,10);
+  assert.equal(paymentStatus(v),'Abonado'); assert.equal(paymentStatus({...v,paid:350000}),'Pagado'); assert.equal(paymentStatus({...v,paid:0}),'Por pagar');
+  assert.throws(() => validateMaterial({...m,paid:'400000'},[room],workers));
+  assert.throws(() => validateMaterial({...m,quantity:'0'},[room],workers));
+  assert.throws(() => validateMaterial({...m,orderStatus:'Perdido'},[room],workers));
+  assert.throws(() => validateMaterial({...m,requestedBy:'x'},[room],workers));
+  assert.equal(parseMoney('$ 1.250.000'),1250000);
+});
+test('summarises month spending, debt and pending orders', () => {
+  const s = materialStats([
+    {orderStatus:'Pedido',date:'2026-10-02',total:300,paid:100},
+    {orderStatus:'Recibido',date:'2026-09-28',total:200,paid:200},
+    {orderStatus:'Por pedir',date:'2026-10-05',total:50,paid:0}], '2026-10');
+  assert.deepEqual(s,{monthSpent:300,monthCount:1,paid:300,owed:200,owedCount:1,toOrder:1,toOrderValue:50});
+});
+test('validates new workers and prevents duplicates', () => {
+  assert.equal(validateWorker({id:'n',name:'  Ana   Pérez '},workers).name,'Ana Pérez');
+  assert.throws(() => validateWorker({id:'n',name:'luis vásquez'},workers));
+  assert.throws(() => validateWorker({id:'n',name:'Al'},workers));
+  assert.throws(() => validateWorker({id:'n',name:'Ana Pérez',photo:'javascript:x'},workers));
+});
