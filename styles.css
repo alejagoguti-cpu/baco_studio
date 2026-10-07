@@ -770,3 +770,13 @@ body.collapsed .brand-logo{width:44px;height:44px}
 .crew-note{margin:-4px 0 14px!important}
 .task-crew .log-avatars{display:flex;padding-left:8px}.task-crew .log-avatars .avatar{width:26px;height:26px}
 #task-form .form-row:has(>label:only-child){grid-template-columns:1fr}
+/* Navegar objetivos por día */
+.goal-nav{display:flex;align-items:center;gap:2px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px}
+.goal-step{width:28px;height:28px;border:0;background:none;border-radius:50%;display:grid;place-items:center;color:#fff;cursor:pointer}
+.goal-step svg{width:14px;height:14px;transform:rotate(90deg)}.goal-step.next svg{transform:rotate(-90deg)}
+.goal-step:hover{background:#ffffff26}
+.goal-date-pick{position:relative;display:flex!important;align-items:center;margin:0!important;padding:0 6px;cursor:pointer}
+.goal-date-pick .goal-date{display:inline-block;color:#fff;font-weight:600}
+.goal-date-pick input{position:absolute;inset:0;opacity:0;width:100%;padding:0;border:0;pointer-events:none}
+.goal-today{border:0;background:#fff;color:#5a524c;font-size:11px;font-weight:700;border-radius:14px;padding:5px 10px;cursor:pointer;margin-left:2px}
+@media(max-width:640px){.goal-head{flex-wrap:wrap}.goal-nav{width:100%;justify-content:space-between}}

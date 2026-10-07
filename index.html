@@ -5,10 +5,10 @@
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=20261007i">
+  <link rel="stylesheet" href="styles.css?v=20261007j">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs?v=20261007i"></script>
+  <script type="module" src="app.mjs?v=20261007j"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -126,7 +126,7 @@
 
       <section id="view-inicio" class="view home">
         <div class="home-col">
-          <div class="praise-card goal-card"><div class="goal-head"><small class="goal-label">OBJETIVO DE HOY</small><span class="goal-date" id="goal-date"></span></div><p id="goal-today-text">Aún no defines el objetivo de hoy.</p><button class="praise-button" id="goal-edit">Definir objetivo <svg><use href="#i-edit"/></svg></button></div>
+          <div class="praise-card goal-card"><div class="goal-head"><small class="goal-label" id="goal-label">OBJETIVO DE HOY</small><div class="goal-nav" role="group" aria-label="Día del objetivo"><button type="button" class="goal-step" id="goal-prev" aria-label="Día anterior"><svg><use href="#i-chevron"/></svg></button><label class="goal-date-pick"><span class="goal-date" id="goal-date"></span><input type="date" id="goal-day" aria-label="Escoger día"></label><button type="button" class="goal-step next" id="goal-next" aria-label="Día siguiente"><svg><use href="#i-chevron"/></svg></button><button type="button" class="goal-today" id="goal-today" hidden>Hoy</button></div></div><p id="goal-today-text">Aún no defines el objetivo de hoy.</p><button class="praise-button" id="goal-edit">Definir objetivo <svg><use href="#i-edit"/></svg></button></div>
           <div class="panel home-panel"><div class="panel-heading"><div><h2>Objetivos de la semana</h2><p class="panel-sub">Toca un día para escribir o planear su objetivo.</p></div></div><div id="goal-list" class="home-scroll"></div></div>
         </div>
         <div class="home-col">
