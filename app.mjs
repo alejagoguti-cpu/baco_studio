@@ -1,9 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007o';
-import { Drive } from './drive.mjs?v=20261007o';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007o';
-import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007o';
-import { createSync } from './sync.mjs?v=20261007o';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007o';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007p';
+import { Drive } from './drive.mjs?v=20261007p';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007p';
+import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007p';
+import { createSync } from './sync.mjs?v=20261007p';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007p';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -627,7 +627,12 @@ async function planSource(key) {
   const meta = state.plans[key];
   if (!meta) return key === 'arq' ? {url: plan, mime:'image/png', name:'Baco-Studio-planta.png', supplied:true} : null;
   if (planUrls.has(key) && planUrls.get(key).at === meta.updatedAt) return {...planUrls.get(key), ...meta};
-  const blob = await blobStore(`plan:${key}`, 'get');
+  const cacheAt = read('baco.planCache', {});
+  let blob = cacheAt[key] === meta.updatedAt || !meta.cloudPath ? await blobStore(`plan:${key}`, 'get') : null;
+  if (!blob && meta.cloudPath && sync.enabled) { // plano subido por otra persona del equipo (o versión más nueva)
+    const res = await fetch(await sync.photoUrl(meta.cloudPath));
+    if (res.ok) { blob = await res.blob(); await blobStore(`plan:${key}`, 'put', blob).catch(() => {}); cacheAt[key] = meta.updatedAt; localStorage.setItem('baco.planCache', JSON.stringify(cacheAt)); }
+  }
   if (!blob) return null;
   const url = URL.createObjectURL(blob); planUrls.set(key, {url, at: meta.updatedAt}); return {url, ...meta};
 }
@@ -676,6 +681,8 @@ async function uploadPlan(key, file) {
   if (file.size > 40 * 1024 * 1024) throw new Error('El plano debe pesar máximo 40 MB.');
   await blobStore(`plan:${key}`, 'put', file);
   state.plans[key] = {name: file.name, mime: file.type, updatedAt: new Date().toISOString()}; persist();
+  const cacheAt = read('baco.planCache', {}); cacheAt[key] = state.plans[key].updatedAt; localStorage.setItem('baco.planCache', JSON.stringify(cacheAt));
+  uploadPlansCloud();
   renderPlans(); toast(`Plano ${planTypes.find(p => p[0] === key)[1].toLowerCase()} cargado.`);
 }
 function editRoom(id) {
@@ -869,7 +876,21 @@ async function synchronize() {
     }
     for (const room of state.rooms.filter(r => r.folderId)) await loadRecords(room);
     persist(); toast('Habitaciones y registros actualizados desde Drive.');
+    if (sync.enabled) setTimeout(() => uploadCloud(), 0);
   } finally { syncing = false; $('#sync-button').disabled = false; render(); if ($('#detail-dialog').open) renderDetail(); }
+}
+// Planos: el archivo se guarda en la nube del equipo para que todos lo vean.
+async function uploadPlansCloud() {
+  if (!sync.enabled) return;
+  for (const [key, meta] of Object.entries(state.plans || {})) {
+    if (meta.cloudPath && meta.cloudAt === meta.updatedAt) continue;
+    try {
+      const blob = await blobStore(`plan:${key}`, 'get'); if (!blob) continue;
+      const path = `planos/${key}-${Date.parse(meta.updatedAt) || Date.now()}.${meta.mime === 'application/pdf' ? 'pdf' : (meta.mime || 'image/png').split('/')[1]}`;
+      await sync.uploadPlan(path, blob);
+      state.plans[key] = {...state.plans[key], cloudPath: path, cloudAt: meta.updatedAt}; persist();
+    } catch (error) { console.warn('Plano sin subir:', error); }
+  }
 }
 // Reduce la foto (máx. 1800 px, JPEG) para que suba rápido y quepa en la nube.
 async function compressPhoto(blob) {
@@ -1081,6 +1102,6 @@ sync = createSync({
   setState: next => { state = next; ensureState(); refreshWorkers(); saveLocal(); render(); if ($('#detail-dialog').open) renderDetail(); },
   onStatus: setSyncStatus, onError: error => console.warn('Sincronización:', error),
 });
-initAuth({ onUser: async () => { if (await sync.start()) uploadCloud(); } });
+initAuth({ onUser: async () => { if (await sync.start()) { uploadCloud(); uploadPlansCloud(); } } });
 addEventListener('online', () => uploadCloud());
 setView('inicio');

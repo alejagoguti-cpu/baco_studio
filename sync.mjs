@@ -5,7 +5,7 @@ export const SUPABASE_URL = 'https://zhkmykhsyhznkpakvbdj.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_HYlV1s3Gjs2fuYKhLJWzDw_e4VsasgB';
 
 const LISTS = ['rooms', 'tasks', 'materials', 'milestones', 'customWorkers', 'records'];
-const SETTINGS = ['goals', 'customProcesses', 'customRoles', 'customUnits', 'removedWorkers', 'workerEdits', 'workerArchive'];
+const SETTINGS = ['plans', 'goals', 'customProcesses', 'customRoles', 'customUnits', 'removedWorkers', 'workerEdits', 'workerArchive'];
 const JOIN_FLAG = 'baco.cloud.joined.zhkmykhsyhznkpakvbdj';
 // Al entrar por primera vez desde un dispositivo: la nube manda, pero lo que solo existe en el dispositivo se agrega.
 export function joinFirstTime(remote, local, firstTime) {
@@ -167,7 +167,12 @@ export function createSync({getToken, getState, setState, onStatus, onError, who
     signed.set(path, { url: data.signedUrl, until: Date.now() + 3300 * 1000 });
     return data.signedUrl;
   }
+  async function uploadPlan(path, blob) {
+    if (!enabled) throw new Error('Sin conexión con la nube.');
+    const { error } = await client.storage.from('fotos').upload(path, blob, { contentType: blob.type || 'application/octet-stream', upsert: true });
+    if (error) throw error;
+  }
   async function removePhoto(path) { if (enabled) await client.storage.from('fotos').remove([path]); }
 
-  return { start, schedule, flush, uploadPhoto, photoUrl, removePhoto, get enabled() { return enabled; } };
+  return { start, schedule, flush, uploadPhoto, uploadPlan, photoUrl, removePhoto, get enabled() { return enabled; } };
 }
