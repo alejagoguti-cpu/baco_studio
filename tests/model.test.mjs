@@ -128,3 +128,12 @@ test('sincronización: estado ↔ filas y diferencias', async () => {
   assert.deepEqual(d.upserts.sort(), ['rooms\u0000a','tasks\u0000t']); assert.deepEqual(d.deletes, []);
   assert.deepEqual(diff(m2, m).deletes, ['tasks\u0000t']);
 });
+
+test('primera entrada a la nube suma lo del dispositivo sin pisar la nube', async () => {
+  const { joinFirstTime } = await import('../sync.mjs');
+  const remote = new Map([['rooms\u0000a', '{"v":1}'], ['settings\u0000goals', '{}']]);
+  const local = new Map([['rooms\u0000a', '{"v":0}'], ['rooms\u0000b', '{"v":2}'], ['settings\u0000goals', '{"x":1}']]);
+  const m = joinFirstTime(remote, local, true);
+  assert.equal(m.get('rooms\u0000a'), '{"v":1}'); assert.equal(m.get('rooms\u0000b'), '{"v":2}'); assert.equal(m.get('settings\u0000goals'), '{"x":1}');
+  assert.equal(joinFirstTime(remote, local, false).has('rooms\u0000b'), false);
+});
