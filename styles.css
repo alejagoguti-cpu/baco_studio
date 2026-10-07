@@ -765,3 +765,6 @@ body.collapsed .brand-logo{width:44px;height:44px}
 @media(max-width:640px){.day-nav{flex:1 1 100%;justify-content:space-between}}
 .day-pick{text-transform:none}#day-label{display:inline-block}#day-label::first-letter{text-transform:uppercase}
 @media(max-width:640px){.rooms-panel .panel-tools .select-pill{flex:1 1 0;min-width:0}}
+.crew-empty{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:0}
+.crew-empty svg{width:16px;height:16px}
+.crew-note{margin:-4px 0 14px!important}

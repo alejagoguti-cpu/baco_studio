@@ -4,7 +4,8 @@ export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char 
 export function validateRoom(room, rooms, workers, extraProcesses = []) {
   if (!room.number?.trim() || !room.level?.trim()) throw new Error('Indica la habitación y el piso o sector.');
   if (rooms.some(r => r.id !== room.id && r.number.trim().toLowerCase() === room.number.trim().toLowerCase() && r.level.trim().toLowerCase() === room.level.trim().toLowerCase())) throw new Error('Esta habitación ya está registrada en ese piso o sector.');
-  if (!Array.isArray(room.workers) || room.workers.length !== 2 || room.workers[0] === room.workers[1] || !room.workers.every(id => workers.some(w => w.id === id))) throw new Error('Selecciona dos maestros distintos del equipo.');
+  // Los encargados fijos son opcionales: quién trabaja cada día se anota en la bitácora (es rotativo).
+  if (!Array.isArray(room.workers) || room.workers.length > 2 || new Set(room.workers).size !== room.workers.length || !room.workers.every(id => workers.some(w => w.id === id))) throw new Error('Los encargados deben ser personas distintas del equipo.');
   if (![...processes, ...extraProcesses].includes(room.process) || !statuses.includes(room.status)) throw new Error('Selecciona un proceso y un estado válidos.');
   return {...room, number: room.number.trim(), level: room.level.trim()};
 }

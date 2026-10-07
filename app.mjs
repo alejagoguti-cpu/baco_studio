@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007g';
-import { Drive } from './drive.mjs?v=20261007g';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007g';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007g';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007h';
+import { Drive } from './drive.mjs?v=20261007h';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007h';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007h';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -148,7 +148,7 @@ function renderCore() {
   for (const id of [...selected]) if (!rooms.some(r => r.id === id)) selected.delete(id);
   const grid = $('#room-grid');
   if (!rooms.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('room')}</div><h3>${total ? 'No encontramos coincidencias' : 'Tu primera habitación, el primer paso.'}</h3><p>${total ? 'Prueba otro número, responsable o estado.' : 'Registra el espacio y asigna a los dos maestros encargados. La numeración la defines tú.'}</p>${total ? '' : `<button class="button primary" id="empty-new-room">${icon('plus')}Crear habitación</button>`}</div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon('room')}</div><h3>${total ? 'No encontramos coincidencias' : 'Tu primera habitación, el primer paso.'}</h3><p>${total ? 'Prueba otro número, responsable o estado.' : 'Registra el espacio y anota cada día quién trabaja en él. La numeración la defines tú.'}</p>${total ? '' : `<button class="button primary" id="empty-new-room">${icon('plus')}Crear habitación</button>`}</div>`;
     $('#empty-new-room')?.addEventListener('click', () => editRoom());
   } else if (roomMode === 'list') {
     const all = rooms.every(r => selected.has(r.id));
@@ -168,8 +168,8 @@ function renderCore() {
       const records = state.records.filter(r => r.roomId === room.id);
       const step = statuses.indexOf(room.status) + 1;
       const act = activityOn(room, day), last = act ? null : lastActivity(room, day);
-      const crew = act ? act.workers : room.workers;
-      return `<article class="room-card"><div class="room-card-top"><span class="room-tile">${e(room.number)}</span><div class="room-title"><strong>Habitación ${e(room.number)}</strong><span>${e(room.level)} · ${records.filter(r => !r.pending).length} fotos · ${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-progress"><div><span>Avance de etapa</span><span><b>${step}/${statuses.length}</b></span></div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i < step ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div></div><div class="room-today ${act ? '' : 'empty'}"><div class="room-today-head"><small>${day === today() ? 'HOY' : e(new Intl.DateTimeFormat('es-CO', {weekday:'short', timeZone:'UTC'}).format(new Date(day + 'T12:00:00Z')).toUpperCase())} · ${e(shortDate(day))}</small><button class="text-button" data-activity="${e(room.id)}">${act ? `${icon('edit')}Cambiar` : '+ Anotar actividad'}</button></div><strong>${act ? e(act.activity) : day === today() ? 'Sin actividad registrada' : 'No se registró actividad'}</strong>${act?.notes ? `<span>${e(act.notes)}</span>` : last ? `<span>Última: ${e(shortDate(last.date))} · ${e(last.activity)}</span>` : ''}</div><div class="room-workers">${crew.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><button class="text-button" data-room="${e(room.id)}">Ver detalles</button><button class="small-btn" data-edit-room="${e(room.id)}">Editar</button><button class="small-btn indigo" data-room="${e(room.id)}">${icon('camera')}Fotos</button></div></article>`;
+      const crew = act ? act.workers : [];
+      return `<article class="room-card"><div class="room-card-top"><span class="room-tile">${e(room.number)}</span><div class="room-title"><strong>Habitación ${e(room.number)}</strong><span>${e(room.level)} · ${records.filter(r => !r.pending).length} fotos · ${room.dirty ? 'Sin sincronizar' : 'En Drive'}</span></div><span class="badge ${statusClass(room.status)}">${e(room.status)}</span></div><div class="room-progress"><div><span>Avance de etapa</span><span><b>${step}/${statuses.length}</b></span></div><div class="stage-track" aria-label="Estado: ${e(room.status)}">${statuses.map((status,i) => `<span class="${i < step ? 'reached' : ''}" title="${e(status)}"></span>`).join('')}</div></div><div class="room-today ${act ? '' : 'empty'}"><div class="room-today-head"><small>${day === today() ? 'HOY' : e(new Intl.DateTimeFormat('es-CO', {weekday:'short', timeZone:'UTC'}).format(new Date(day + 'T12:00:00Z')).toUpperCase())} · ${e(shortDate(day))}</small><button class="text-button" data-activity="${e(room.id)}">${act ? `${icon('edit')}Cambiar` : '+ Anotar actividad'}</button></div><strong>${act ? e(act.activity) : day === today() ? 'Sin actividad registrada' : 'No se registró actividad'}</strong>${act?.notes ? `<span>${e(act.notes)}</span>` : last ? `<span>Última: ${e(shortDate(last.date))} · ${e(last.activity)}</span>` : ''}</div><div class="room-workers">${crew.length ? '' : `<p class="crew-empty">${icon('users')}Nadie anotado ${day === today() ? 'hoy' : 'ese día'}</p>`}${crew.map(id => `<div>${avatar(id)}<span>${e(workerName(id))}</span></div>`).join('')}</div><div class="room-card-footer"><button class="text-button" data-room="${e(room.id)}">Ver detalles</button><button class="small-btn" data-edit-room="${e(room.id)}">Editar</button><button class="small-btn indigo" data-room="${e(room.id)}">${icon('camera')}Fotos</button></div></article>`;
     }).join('');
   }
   grid.classList.toggle('list-mode', roomMode !== 'cards' && rooms.length > 0);
@@ -183,9 +183,10 @@ function renderCore() {
   const max = Math.max(...statuses.map(countBy), 1);
   $('#nav-team-count').textContent = $('#team-count').textContent = workers.length;
   $('#team-grid').innerHTML = workers.length ? workers.map(w => {
-    const assigned = state.rooms.filter(r => r.workers.includes(w.id));
+    const assigned = state.rooms.filter(r => r.workers.includes(w.id) || (r.log || []).some(x => x.workers.includes(w.id)));
+    const todayRooms = state.rooms.filter(r => activityOn(r, today())?.workers.includes(w.id));
     const done = assigned.filter(r => r.status === 'Finalizada').length;
-    return `<article class="team-card"><div class="team-top"><div class="team-photo"><img src="${photoOf(w)}" alt="${e(w.name)}" loading="lazy"><span class="role-tag">${e((w.role || 'Obra').split(' ')[0])}</span></div><div><h3>${e(w.name)}</h3><p>${assigned.length ? `${assigned.length} ${assigned.length === 1 ? 'habitación' : 'habitaciones'}` : e(w.role || 'Personal de obra')}<span class="badge ${assigned.length ? 'active' : 'off'}">${assigned.length ? 'Asignado' : 'Libre'}</span></p>${w.phone ? `<p class="team-phone">${e(w.phone)}</p>` : ''}</div></div><div class="team-load"><div><span>Habitaciones finalizadas</span><span><b>${done}/${assigned.length}</b></span></div><div class="stage-track">${assigned.length ? assigned.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}"></span>`).join('') : '<span></span>'}</div></div><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}<button class="small-btn team-edit" data-worker-edit="${e(w.id)}">${icon('edit')}Editar</button></div></article>`;
+    return `<article class="team-card"><div class="team-top"><div class="team-photo"><img src="${photoOf(w)}" alt="${e(w.name)}" loading="lazy"><span class="role-tag">${e((w.role || 'Obra').split(' ')[0])}</span></div><div><h3>${e(w.name)}</h3><p>${todayRooms.length ? `Hoy: ${todayRooms.map(r => `Hab. ${e(r.number)} · ${e(activityOn(r, today()).activity)}`).join(', ')}` : e(w.role || 'Personal de obra')}<span class="badge ${todayRooms.length ? 'active' : 'off'}">${todayRooms.length ? 'Hoy en obra' : 'Sin anotar hoy'}</span></p>${w.phone ? `<p class="team-phone">${e(w.phone)}</p>` : ''}</div></div><div class="team-load"><div><span>Habitaciones finalizadas</span><span><b>${done}/${assigned.length}</b></span></div><div class="stage-track">${assigned.length ? assigned.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}"></span>`).join('') : '<span></span>'}</div></div><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}<button class="small-btn team-edit" data-worker-edit="${e(w.id)}">${icon('edit')}Editar</button></div></article>`;
   }).join('') : `<div class="empty-state"><div class="empty-icon">${icon('users')}</div><h3>Aún no hay personal</h3><p>Agrega a las personas de la obra para asignarlas a las habitaciones.</p></div>`;
   document.querySelectorAll('[data-worker-edit]').forEach(b => b.onclick = () => editWorker(b.dataset.workerEdit));
   document.querySelectorAll('[data-team-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.teamRoom)));
@@ -237,15 +238,6 @@ function renderTasks() {
   });
   document.querySelectorAll('[data-task-edit]').forEach(b => b.onclick = () => editTask(b.dataset.taskEdit));
   document.querySelectorAll('[data-task-room]').forEach(b => b.onclick = () => openRoom(b.dataset.taskRoom));
-  const todays = state.tasks.filter(t => t.date === today());
-  const doneToday = todays.filter(t => t.status === 'Completada').length;
-  $('#task-today-percent').textContent = `${todays.length ? Math.round(doneToday / todays.length * 100) : 0}%`;
-  $('#task-today-date').textContent = dateLabel(new Date().toISOString());
-  if (state.goals[today()]?.text) $('#task-praise').textContent = `Objetivo de hoy: ${state.goals[today()].text}`; else $('#task-praise').textContent = !todays.length ? 'Anota tus asignaciones del día y márcalas al terminarlas.' : doneToday === todays.length ? '¡Buen trabajo! Completaste todas las tareas de hoy.' : `Te ${todays.length - doneToday === 1 ? 'queda 1 tarea' : `quedan ${todays.length - doneToday} tareas`} por completar hoy.`;
-  $('#task-targets').innerHTML = priorities.map(p => {
-    const list = todays.filter(t => t.priority === p); const done = list.filter(t => t.status === 'Completada').length;
-    return `<div class="target-row"><div><strong>${done}</strong><span>/${list.length}</span><small>Prioridad ${e(p.toLowerCase())}</small></div><div class="target-track"><span class="${priorityClass(p)}" style="width:${list.length ? done / list.length * 100 : 0}%"></span></div></div>`;
-  }).join('');
 }
 function editTask(id) {
   const task = state.tasks.find(t => t.id === id);
@@ -684,8 +676,8 @@ function editRoom(id) {
   $('#room-form-title').textContent = room ? `Editar habitación ${room.number}` : 'Nueva habitación';
   for (const key of ['id','number','level','notes','status']) form.elements[key].value = room?.[key] || (key === 'status' ? 'Pendiente' : '');
   form.elements.process.innerHTML = options(allProcesses(), room?.process || processes[0]);
-  form.elements.worker1.innerHTML = workerOptions(room?.workers[0]);
-  form.elements.worker2.innerHTML = workerOptions(room?.workers[1]);
+  form.elements.worker1.innerHTML = workerOptions(room?.workers[0]).replace('Seleccionar maestro', 'Sin encargado fijo');
+  form.elements.worker2.innerHTML = workerOptions(room?.workers[1]).replace('Seleccionar maestro', 'Sin encargado fijo');
   $('#room-dialog').showModal();
 }
 $('#room-form').addEventListener('submit', event => {
@@ -693,7 +685,7 @@ $('#room-form').addEventListener('submit', event => {
   try {
     const data = Object.fromEntries(new FormData(event.target));
     const existing = state.rooms.find(r => r.id === data.id);
-    const room = validateRoom({...existing,...data,id:data.id || crypto.randomUUID(),workers:[data.worker1,data.worker2],dirty:true,updatedAt:new Date().toISOString()}, state.rooms, workers, allProcesses());
+    const room = validateRoom({...existing,...data,id:data.id || crypto.randomUUID(),workers:[data.worker1,data.worker2].filter(Boolean),dirty:true,updatedAt:new Date().toISOString()}, state.rooms, workers, allProcesses());
     delete room.worker1; delete room.worker2;
     state.rooms = [...state.rooms.filter(r => r.id !== room.id), room]; persist();
     $('#room-dialog').close(); render();
@@ -723,8 +715,8 @@ function fillActivity(room, date) {
   $('#activity-form-title').textContent = date === today() ? 'Actividad de hoy' : `Actividad del ${longDate(date)}`;
   form.elements.process.innerHTML = options(allProcesses(), entry?.activity || prev?.activity || room.process);
   form.elements.notes.value = entry?.notes || '';
-  const chosen = entry?.workers || room.workers;
-  const ids = [...new Set([...room.workers, ...chosen, ...workers.map(w => w.id)])].filter(id => worker(id));
+  const chosen = entry?.workers || [];
+  const ids = [...new Set([...chosen, ...workers.map(w => w.id)])].filter(id => worker(id));
   $('#activity-workers').innerHTML = ids.map(id => `<label class="room-pick worker-pick"><input type="checkbox" value="${e(id)}" ${chosen.includes(id) ? 'checked' : ''}><span>${avatar(id)}${e(workerName(id))}</span></label>`).join('');
   $('#activity-delete').hidden = !entry; delete $('#activity-delete').dataset.confirm; $('#activity-delete').textContent = 'Eliminar';
   syncSelects(form);
@@ -786,7 +778,7 @@ function renderDetail() {
       const data = Object.fromEntries(new FormData(form));
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date) || data.date > today()) throw new Error('Selecciona una fecha válida, hasta hoy.');
       for (const file of files) {
-        const record = {id:crypto.randomUUID(),roomId:room.id,process:data.process,date:data.date,stage:data.stage,notes:data.notes,workers:[...room.workers],pending:true,originalName:file.name};
+        const record = {id:crypto.randomUUID(),roomId:room.id,process:data.process,date:data.date,stage:data.stage,notes:data.notes,workers:[...(activityOn(room, data.date)?.workers || room.workers)],pending:true,originalName:file.name};
         await blobStore(record.id, 'put', file);
         state.records.push(record); persist();
       }
@@ -934,8 +926,6 @@ $('#goal-edit').onclick = () => editGoal();
 $('#milestone-new').onclick = () => editMilestone();
 setInterval(() => { if (!document.hidden) renderClock(); }, 30000);
 $('#heading-action').onclick = () => ({inicio:() => editMilestone(), tareas:editTask, materiales:editMaterial, equipo:editWorker}[view] || editRoom)();
-$('#task-praise-new').onclick = $('#task-quick').onclick = () => editTask();
-$('#target-open').onclick = () => { taskScope = 'today'; render(); };
 $('#tasks-toggle').onclick = () => { const g = $('#tasks-group'); if (view !== 'tareas') { g.classList.add('open'); setView('tareas'); } else g.classList.toggle('open'); $('#tasks-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
 document.querySelectorAll('[data-task-scope]').forEach(b => b.onclick = () => { taskScope = b.dataset.taskScope; if (view !== 'tareas') setView('tareas'); else { closeNav(); render(); } });
 ['#task-search','#task-status-filter','#task-priority-filter'].forEach(sel => $(sel).addEventListener(sel === '#task-search' ? 'input' : 'change', render));
