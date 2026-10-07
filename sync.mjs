@@ -138,5 +138,22 @@ export function createSync({getToken, getState, setState, onStatus, onError, who
     }
   }
 
-  return { start, schedule, flush, get enabled() { return enabled; } };
+  // Fotos compartidas: bucket privado «fotos»; solo el equipo puede verlas (URL firmada por 1 hora).
+  const signed = new Map();
+  async function uploadPhoto(path, blob) {
+    if (!enabled) throw new Error('Sin conexión con la nube.');
+    const { error } = await client.storage.from('fotos').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+    if (error) throw error;
+    return path;
+  }
+  async function photoUrl(path) {
+    const hit = signed.get(path); if (hit && hit.until > Date.now()) return hit.url;
+    const { data, error } = await client.storage.from('fotos').createSignedUrl(path, 3600);
+    if (error) throw error;
+    signed.set(path, { url: data.signedUrl, until: Date.now() + 3300 * 1000 });
+    return data.signedUrl;
+  }
+  async function removePhoto(path) { if (enabled) await client.storage.from('fotos').remove([path]); }
+
+  return { start, schedule, flush, uploadPhoto, photoUrl, removePhoto, get enabled() { return enabled; } };
 }

@@ -1,9 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007l';
-import { Drive } from './drive.mjs?v=20261007l';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007l';
-import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007l';
-import { createSync } from './sync.mjs?v=20261007l';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007l';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007m';
+import { Drive } from './drive.mjs?v=20261007m';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007m';
+import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007m';
+import { createSync } from './sync.mjs?v=20261007m';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007m';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -129,7 +129,7 @@ function renderCore() {
   bars($('#bars-rooms'), statuses.map(countBy));
   bars($('#bars-process'), allProcesses().map(p => state.rooms.filter(r => r.process === p && r.status !== 'Finalizada').length));
   bars($('#bars-photos'), allProcesses().map(p => uploaded.filter(r => r.process === p).length));
-  $('#stat-photo-caption').textContent = pendingPhotos ? `${pendingPhotos} fotos pendientes de subir` : drive.connected ? 'Fotos consultadas en este proyecto' : 'Conecta Drive para consultar';
+  $('#stat-photo-caption').textContent = pendingPhotos ? `${pendingPhotos} fotos pendientes de subir` : sync.enabled ? 'Compartidas con el equipo' : drive.connected ? 'Fotos consultadas en este proyecto' : 'Inicia sesión para ver las fotos del equipo';
   renderClock();
   const gd = goalDay || today(), goal = state.goals[gd]?.text;
   $('#goal-label').textContent = gd === today() ? 'OBJETIVO DE HOY' : gd === shiftDay(today(), -1) ? 'OBJETIVO DE AYER' : gd === shiftDay(today(), 1) ? 'OBJETIVO DE MAÑANA' : 'OBJETIVO DEL DÍA';
@@ -792,7 +792,8 @@ function renderDetail() {
         state.records.push(record); persist();
       }
       render(); renderDetail();
-      if (drive.connected) await uploadPending(room.id);
+      if (sync.enabled) await uploadCloud(room.id);
+      else if (drive.connected) await uploadPending(room.id);
       else toast(`${files.length} fotos guardadas como pendientes en este dispositivo.`);
     } catch (error) { errorToast(error); }
     finally { if (submit.isConnected) submit.disabled = false; }
@@ -801,6 +802,7 @@ function renderDetail() {
   enhance($('#detail-content'));
 }
 async function recordImage(record) {
+  if (record.cloudPath && sync.enabled) return sync.photoUrl(record.cloudPath);
   if (urls.has(record.id)) return urls.get(record.id);
   const blob = record.pending ? await blobStore(record.id, 'get') : drive.connected ? await drive.image(record.fileId) : null;
   if (!blob) return '';
@@ -811,21 +813,21 @@ function renderGallery(container, records) {
   const sorted = [...records].sort((a,b) => b.date.localeCompare(a.date));
   container.innerHTML = sorted.map(record => {
     const room = state.rooms.find(r => r.id === record.roomId);
-    return `<article class="photo-card"><button class="photo-image" data-photo="${e(record.id)}" aria-label="Ver foto de habitación ${e(room?.number || '')}"><span>Cargando foto…</span><img data-record-image="${e(record.id)}" alt="${e(record.process)} · ${e(record.stage)}" hidden loading="lazy"></button><div class="photo-info"><div><span class="badge ${record.pending ? 'pending' : 'done'}">${record.pending ? 'Pendiente de subir' : 'En Drive'}</span><small>${e(record.stage)}</small></div><h4>Hab. ${e(room?.number || '')} · ${e(record.process)}</h4><p>${e(dateLabel(record.date+'T12:00:00-05:00'))}</p><p class="photo-workers">${record.workers.map(id => e(workerName(id))).join(' · ')}</p>${record.notes ? `<p>${e(record.notes)}</p>` : ''}${!record.pending ? `<a class="text-button" href="${safeDriveLink(record.fileId)}" target="_blank" rel="noopener noreferrer">Ver en Drive ↗</a>` : ''}</div></article>`;
+    return `<article class="photo-card"><button class="photo-image" data-photo="${e(record.id)}" aria-label="Ver foto de habitación ${e(room?.number || '')}"><span>Cargando foto…</span><img data-record-image="${e(record.id)}" alt="${e(record.process)} · ${e(record.stage)}" hidden loading="lazy"></button><div class="photo-info"><div><span class="badge ${record.pending ? 'pending' : 'done'}">${record.pending ? 'Pendiente de subir' : record.cloudPath ? 'En la nube' : 'En Drive'}</span><small>${e(record.stage)}</small></div><h4>Hab. ${e(room?.number || '')} · ${e(record.process)}</h4><p>${e(dateLabel(record.date+'T12:00:00-05:00'))}</p><p class="photo-workers">${record.workers.map(id => e(workerName(id))).join(' · ')}</p>${record.notes ? `<p>${e(record.notes)}</p>` : ''}${!record.pending ? `<a class="text-button" href="${safeDriveLink(record.fileId)}" target="_blank" rel="noopener noreferrer">Ver en Drive ↗</a>` : ''}</div></article>`;
   }).join('');
   sorted.forEach(async record => {
     const img = [...container.querySelectorAll('[data-record-image]')].find(el => el.dataset.recordImage === record.id);
     try {
       const src = await recordImage(record); if (!img.isConnected) return;
       if (src) { img.src = src; img.hidden = false; img.previousElementSibling.hidden = true; }
-      else img.previousElementSibling.textContent = 'Conecta Drive para ver esta foto';
+      else img.previousElementSibling.textContent = record.cloudPath ? 'Inicia sesión para ver esta foto' : 'Foto guardada solo en Drive';
     } catch { if (img.isConnected) img.previousElementSibling.textContent = 'No se pudo cargar. Actualiza Drive.'; }
   });
   container.querySelectorAll('[data-photo]').forEach(button => button.onclick = () => {
     const record = records.find(r => r.id === button.dataset.photo);
-    if (!record.pending) window.open(safeDriveLink(record.fileId), '_blank', 'noopener,noreferrer');
+    if (!record.pending && !record.cloudPath) window.open(safeDriveLink(record.fileId), '_blank', 'noopener,noreferrer');
     else {
-      const src = urls.get(record.id); if (src) {
+      const img = button.querySelector('img'); const src = img?.src || urls.get(record.id); if (src) {
         const dialog = document.createElement('dialog'); dialog.className = 'lightbox';
         const image = document.createElement('img'); image.src = src; image.alt = record.process;
         const close = document.createElement('button'); close.className = 'button secondary'; close.textContent = 'Cerrar'; close.onclick = () => dialog.close();
@@ -868,6 +870,39 @@ async function synchronize() {
     for (const room of state.rooms.filter(r => r.folderId)) await loadRecords(room);
     persist(); toast('Habitaciones y registros actualizados desde Drive.');
   } finally { syncing = false; $('#sync-button').disabled = false; render(); if ($('#detail-dialog').open) renderDetail(); }
+}
+// Reduce la foto (máx. 1800 px, JPEG) para que suba rápido y quepa en la nube.
+async function compressPhoto(blob) {
+  try {
+    const bmp = await createImageBitmap(blob); const scale = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas'); canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height); bmp.close?.();
+    const out = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82));
+    return out && out.size < blob.size ? out : blob;
+  } catch { return blob; }
+}
+// Sube a la nube del equipo las fotos de este dispositivo (y las de Drive si Drive está conectado).
+let cloudBusy = false;
+async function uploadCloud(roomId) {
+  if (!sync.enabled || cloudBusy) return;
+  cloudBusy = true; let count = 0, failed = 0;
+  try {
+    const todo = state.records.filter(r => !r.cloudPath && (!roomId || r.roomId === roomId) && (r.pending || (r.fileId && drive.connected)));
+    for (const record of todo) {
+      try {
+        const blob = record.pending ? await blobStore(record.id, 'get') : await drive.image(record.fileId);
+        if (!blob) continue;
+        const path = `${record.roomId}/${record.id}.jpg`;
+        await sync.uploadPhoto(path, await compressPhoto(blob));
+        const wasPending = record.pending;
+        record.cloudPath = path; record.pending = false; persist();
+        if (wasPending) await blobStore(record.id, 'delete');
+        count++;
+      } catch (error) { failed++; console.warn('Foto sin subir:', error); }
+    }
+    if (count) toast(`${count} ${count === 1 ? 'foto subida' : 'fotos subidas'} a la nube del equipo.`);
+    if (failed) toast(`${failed} ${failed === 1 ? 'foto no se pudo subir' : 'fotos no se pudieron subir'}; se reintentará al volver la conexión.`);
+  } finally { cloudBusy = false; render(); if ($('#detail-dialog').open) renderDetail(); }
 }
 async function uploadPending(roomId) {
   if (uploadBusy || syncing) return;
@@ -1046,5 +1081,6 @@ sync = createSync({
   setState: next => { state = next; ensureState(); refreshWorkers(); saveLocal(); render(); if ($('#detail-dialog').open) renderDetail(); },
   onStatus: setSyncStatus, onError: error => console.warn('Sincronización:', error),
 });
-initAuth({ onUser: () => sync.start() });
+initAuth({ onUser: async () => { if (await sync.start()) uploadCloud(); } });
+addEventListener('online', () => uploadCloud());
 setView('inicio');

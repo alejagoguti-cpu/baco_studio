@@ -5,10 +5,10 @@
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=20261007l">
+  <link rel="stylesheet" href="styles.css?v=20261007m">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs?v=20261007l"></script>
+  <script type="module" src="app.mjs?v=20261007m"></script>
 </head>
 <body class="auth-locked">
   <div id="auth-gate" class="auth-gate"><div class="auth-card"><img class="auth-logo" src="logo.png" alt="Baco Studio"><p class="auth-eyebrow">CONTROL DE OBRA</p><h1>Inicia sesión</h1><p class="auth-sub">Solo el equipo de la obra puede entrar.</p><p class="auth-message" id="auth-message">Cargando…</p><div id="clerk-sign-in"></div></div></div>
@@ -122,7 +122,7 @@
       <section id="overview" class="stats" aria-label="Resumen de obra" hidden>
         <div class="stat"><div class="stat-label"><svg><use href="#i-room"/></svg>Habitaciones</div><div class="stat-row"><strong id="stat-rooms">00</strong><div class="mini-bars" id="bars-rooms" aria-hidden="true"></div></div><small>Por estado de obra</small></div>
         <div class="stat"><div class="stat-label"><svg><use href="#i-clock"/></svg>En proceso</div><div class="stat-row"><strong id="stat-active">00</strong><div class="mini-bars" id="bars-process" aria-hidden="true"></div></div><small>Por proceso activo</small></div>
-        <div class="stat"><div class="stat-label"><svg><use href="#i-camera"/></svg>Fotos en Drive</div><div class="stat-row"><strong id="stat-photos">00</strong><div class="mini-bars" id="bars-photos" aria-hidden="true"></div></div><small id="stat-photo-caption">Conecta Drive para consultar</small></div>
+        <div class="stat"><div class="stat-label"><svg><use href="#i-camera"/></svg>Fotos de la obra</div><div class="stat-row"><strong id="stat-photos">00</strong><div class="mini-bars" id="bars-photos" aria-hidden="true"></div></div><small id="stat-photo-caption">Conecta Drive para consultar</small></div>
         <div class="stat stat-clock"><div class="stat-label"><span id="clock-title">Estado general</span> <span class="clock-tag" id="clock-tag">Sin registros</span></div><div class="clock" id="status-clock"><span>00</span><i>:</i><span>00</span><i>:</i><span>00</span></div><div class="clock-legend" id="clock-legend"><span>Pendientes</span><span>En proceso</span><span>Finalizadas</span></div></div>
       </section>
 
