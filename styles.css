@@ -437,3 +437,69 @@ summary{cursor:pointer;font-size:12.5px;font-weight:600;margin-bottom:12px}
 @media(max-width:1320px){.task-cards{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.task-search{width:100%}.task-cards{grid-template-columns:1fr}.task-progress-pill{margin:6px 0 0}}
 .task-table .pill{white-space:nowrap}
+/* Materiales */
+.money-stats{grid-template-columns:repeat(4,1fr)}
+.money-stats .stat-row strong{font-size:clamp(22px,2vw,30px);letter-spacing:-.8px}
+.stat-owed{background:linear-gradient(160deg,#5a4bd6,#3e30b8);color:#fff;border-color:transparent}
+.stat-owed .stat-label,.stat-owed small,.stat-owed .stat-label svg{color:#e6e1ff}
+.m-search{width:100%;margin-bottom:12px}
+.requester-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.requester-row:empty{display:none}
+.requester-label{font-size:12px;color:var(--muted);margin-right:2px}
+.req-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 12px 4px 4px;font-size:12px;font-weight:500}
+.req-chip:first-of-type{padding:7px 14px}
+.req-chip .avatar{width:24px;height:24px}
+.req-chip b{font-size:10.5px;background:var(--line-2);border-radius:8px;padding:1px 6px;color:var(--muted)}
+.req-chip.selected{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.req-chip.selected b{background:#ffffff30;color:#fff}
+.material-table{min-width:1050px}
+.nowrap{white-space:nowrap}
+.material-table td.owed{color:#c43a3a;font-weight:600}
+.status-icon.pending svg,.status-icon.active svg{stroke-width:2}
+.pager{display:inline-flex;align-items:center;gap:8px}
+.pager .small-btn{padding:4px 10px}
+.table-foot select{border:1px solid var(--line);border-radius:8px;padding:3px 6px;margin-left:6px;background:#fff}
+.money-hint{font-size:12px;color:var(--indigo);margin:-6px 0 14px;font-weight:600}
+/* Equipo */
+.team-heading .team-add{margin-left:auto}
+.team-phone{font-size:11.5px!important;color:var(--muted)}
+.team-assignments .team-edit{margin-left:auto}
+.worker-photo-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.worker-preview,.worker-initials{width:64px;height:64px;border-radius:50%;object-fit:cover}
+.worker-initials{display:grid;place-items:center;background:var(--indigo-soft);color:var(--indigo);font-weight:700;font-size:22px}
+.worker-photo-row label.small-btn{cursor:pointer;margin:0;display:inline-flex;flex-direction:row;font-weight:600;font-size:12px}
+@media(max-width:1180px){.money-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.money-stats{grid-template-columns:1fr 1fr}.money-stats .stat-row strong{font-size:20px}.team-heading .team-add{width:100%}}
+/* Reportes */
+.report-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.report-tools{display:flex;gap:10px;align-items:center}
+.report-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-bottom:16px;align-items:start}
+#report-body>.report-grid:has(>section.rail-card+section.rail-card){grid-template-columns:1fr 1fr}
+.report-grid .rail-card,.report-grid .drive-callout{margin:0 0 16px}
+.panel-lite{background:#fff}
+.report-kpis{margin-bottom:16px}
+.report-chart{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;align-items:end;height:190px;margin-top:10px}
+.report-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.report-col b{font-size:11.5px;white-space:nowrap}
+.report-col small{font-size:10.5px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
+.report-bar-fill{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#f2eee8,#fbfaf8);position:relative}
+.report-bar-fill::before{content:'';position:absolute;inset:0 0 auto;height:6px;border-radius:3px;background:var(--orange)}
+.report-chart.pct .report-bar-fill::before{background:var(--mint)}
+.report-bar-fill.current{background:linear-gradient(180deg,#ffe2d4,#fff4ee)}
+.hbar{display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:10px;padding:7px 0;font-size:12.5px}
+.hbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar>div{height:8px;border-radius:4px;background:var(--line-2);overflow:hidden}
+.hbar i{display:block;height:100%;border-radius:4px;background:var(--indigo)}
+.hbar b{font-weight:600;white-space:nowrap}
+.insight-list{margin:0;padding-left:18px;font-size:12.5px;color:#5d5874;line-height:1.6}
+.insight-list li{margin-bottom:6px}
+.room-table td.owed{color:#c43a3a;font-weight:600}
+@media(max-width:1180px){.report-grid,#report-body>.report-grid:has(>section.rail-card+section.rail-card){grid-template-columns:1fr}}
+@media print{
+  .sidebar,.topbar,.page-heading .button,.report-tools,.segmented,footer,.selection-bar,.toast{display:none!important}
+  main{margin:0}.content{padding:0;max-width:none}body{background:#fff}
+  .rail-card,.stat,.sector-card{break-inside:avoid;box-shadow:none}
+  .report-grid{grid-template-columns:1fr 1fr}
+}
+.material-table td:nth-child(2){min-width:190px}
+.team-heading .team-add{display:none}

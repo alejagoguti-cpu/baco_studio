@@ -1,13 +1,21 @@
-import { workers, plan } from './assets.mjs';
+import { workers as baseWorkers, plan } from './assets.mjs';
 import { Drive } from './drive.mjs';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
 
 const $ = selector => document.querySelector(selector);
 const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-state.tasks ||= [];
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; }
+ensureState();
+let workers = [];
+function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
+refreshWorkers();
+let materialScope = 'all';
+let materialRequester = 'all';
+let materialPage = 1;
+const materialSelected = new Set();
 let activeRoom = null;
 let taskScope = 'all';
 let view = 'habitaciones';
@@ -15,7 +23,10 @@ let roomMode = 'cards';
 let syncing = false;
 let uploadBusy = false;
 const urls = new Map();
-const worker = id => workers.find(w => w.id === id);
+const worker = id => workers.find(w => w.id === id) || state.workerArchive[id];
+const initials = name => String(name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+const photoOf = w => w?.photo || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='#efedfb'/><text x='32' y='40' font-family='Arial' font-size='24' font-weight='700' fill='#4d3fc6' text-anchor='middle'>${initials(w?.name).replace(/[<&]/g, '')}</text></svg>`)}`;
+const cop = n => new Intl.NumberFormat('es-CO', {style:'currency', currency:'COP', maximumFractionDigits:0}).format(n || 0);
 const workerName = id => worker(id)?.name || 'Responsable pendiente';
 const options = (values, selected) => values.map(v => `<option value="${e(v)}" ${v === selected ? 'selected' : ''}>${e(v)}</option>`).join('');
 const workerOptions = selected => '<option value="">Seleccionar maestro</option>' + workers.map(w => `<option value="${w.id}" ${w.id === selected ? 'selected' : ''}>${e(w.name)}</option>`).join('');
@@ -70,22 +81,24 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
   $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
-  $('#overview').hidden = next === 'plano' || next === 'tareas';
-  $('#heading-action').hidden = next === 'plano';
-  $('#heading-action').lastChild.textContent = next === 'tareas' ? 'Nueva tarea' : 'Nueva habitación';
+  $('#overview').hidden = ['plano','tareas','materiales','reportes'].includes(next);
+  $('#heading-action').hidden = next === 'plano' || next === 'reportes';
+  $('#heading-action').lastChild.textContent = {tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
+  $('#materials-toggle').classList.toggle('active', next === 'materiales');
+  if (next === 'materiales') $('#materials-group').classList.add('open');
   $('#tasks-toggle').classList.toggle('active', next === 'tareas');
   if (next === 'tareas') $('#tasks-group').classList.add('open');
   history.replaceState(null, '', `#${next}`);
   closeNav();
   render();
 }
-function avatar(id, extra = '') { const w = worker(id); return w ? `<img class="avatar ${extra}" src="${w.photo}" alt="${e(w.name)}" loading="lazy">` : ''; }
+function avatar(id, extra = '') { const w = worker(id); return w ? `<img class="avatar ${extra}" src="${photoOf(w)}" alt="${e(w.name)}" loading="lazy">` : ''; }
 function render() {
   const total = state.rooms.length;
   const countBy = status => state.rooms.filter(r => r.status === status).length;
@@ -156,14 +169,18 @@ function render() {
   const recent = [...state.records].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
   $('#recent-activity').innerHTML = recent.length ? recent.map(record => `<div class="activity-item">${avatar(record.workers[0])}<div><p><b>@${e(workerName(record.workers[0]).split(' ')[0])}</b> registró ${e(record.process.toLowerCase())} en Hab. ${e(state.rooms.find(r => r.id === record.roomId)?.number || '')}</p><small>${e(dateLabel(record.date+'T12:00:00-05:00'))} · ${record.pending ? 'Pendiente' : 'En Drive'}</small></div></div>`).join('') : '<p class="rail-empty">Aún no hay registros.<br>Las fotos que agregues aparecerán aquí.</p>';
 
-  $('#team-grid').innerHTML = workers.map(w => {
+  $('#nav-team-count').textContent = $('#team-count').textContent = workers.length;
+  $('#team-grid').innerHTML = workers.length ? workers.map(w => {
     const assigned = state.rooms.filter(r => r.workers.includes(w.id));
     const done = assigned.filter(r => r.status === 'Finalizada').length;
-    return `<article class="team-card"><div class="team-top"><div class="team-photo"><img src="${w.photo}" alt="${e(w.name)}" loading="lazy"><span class="role-tag">Obra</span></div><div><h3>${e(w.name)}</h3><p>${assigned.length ? `${assigned.length} ${assigned.length === 1 ? 'habitación' : 'habitaciones'}` : 'Personal de obra'}<span class="badge ${assigned.length ? 'active' : 'off'}">${assigned.length ? 'Asignado' : 'Libre'}</span></p></div></div><div class="team-load"><div><span>Habitaciones finalizadas</span><span><b>${done}/${assigned.length}</b></span></div><div class="stage-track">${assigned.length ? assigned.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}"></span>`).join('') : '<span></span>'}</div></div><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}</div></article>`;
-  }).join('');
+    return `<article class="team-card"><div class="team-top"><div class="team-photo"><img src="${photoOf(w)}" alt="${e(w.name)}" loading="lazy"><span class="role-tag">${e((w.role || 'Obra').split(' ')[0])}</span></div><div><h3>${e(w.name)}</h3><p>${assigned.length ? `${assigned.length} ${assigned.length === 1 ? 'habitación' : 'habitaciones'}` : e(w.role || 'Personal de obra')}<span class="badge ${assigned.length ? 'active' : 'off'}">${assigned.length ? 'Asignado' : 'Libre'}</span></p>${w.phone ? `<p class="team-phone">${e(w.phone)}</p>` : ''}</div></div><div class="team-load"><div><span>Habitaciones finalizadas</span><span><b>${done}/${assigned.length}</b></span></div><div class="stage-track">${assigned.length ? assigned.map(r => `<span class="${r.status === 'Finalizada' ? 'reached' : ''}"></span>`).join('') : '<span></span>'}</div></div><div class="team-assignments">${assigned.length ? assigned.map(r => `<button class="pill" data-team-room="${e(r.id)}">Hab. ${e(r.number)}</button>`).join('') : '<span class="muted">Sin habitación asignada</span>'}<button class="small-btn team-edit" data-worker-edit="${e(w.id)}">${icon('edit')}Editar</button></div></article>`;
+  }).join('') : `<div class="empty-state"><div class="empty-icon">${icon('users')}</div><h3>Aún no hay personal</h3><p>Agrega a las personas de la obra para asignarlas a las habitaciones.</p></div>`;
+  document.querySelectorAll('[data-worker-edit]').forEach(b => b.onclick = () => editWorker(b.dataset.workerEdit));
   document.querySelectorAll('[data-team-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.teamRoom)));
   if (view === 'registro') renderGallery($('#global-gallery'), state.records);
   renderTasks();
+  renderMaterials();
+  renderReports();
 }
 
 const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
@@ -238,6 +255,208 @@ $('#task-delete').onclick = () => {
   const id = $('#task-form').elements.id.value;
   state.tasks = state.tasks.filter(t => t.id !== id); persist(); $('#task-dialog').close(); render(); toast('Tarea eliminada.');
 };
+
+// ---------- Equipo de obra ----------
+let workerPhoto = '';
+function setWorkerPhoto(src, name) {
+  workerPhoto = src || '';
+  $('#worker-photo-preview').hidden = !workerPhoto; if (workerPhoto) $('#worker-photo-preview').src = workerPhoto;
+  $('#worker-initials').hidden = !!workerPhoto; $('#worker-initials').textContent = initials(name) || '?';
+  $('#worker-photo-clear').hidden = !workerPhoto;
+}
+function editWorker(id) {
+  const w = workers.find(x => x.id === id);
+  $('#worker-dialog').querySelector('.dialog-feedback')?.remove();
+  const form = $('#worker-form'); form.reset();
+  $('#worker-form-title').textContent = w ? 'Editar trabajador' : 'Agregar trabajador';
+  for (const key of ['id','name','role','phone']) form.elements[key].value = w?.[key] || '';
+  if (w?.role === 'Personal de obra') form.elements.role.value = '';
+  setWorkerPhoto(w?.photo || '', w?.name);
+  $('#worker-delete').hidden = !w; $('#worker-delete').dataset.confirm = ''; $('#worker-delete').textContent = 'Eliminar';
+  $('#worker-dialog').showModal();
+}
+$('#worker-form').elements.name.addEventListener('input', event => { if (!workerPhoto) $('#worker-initials').textContent = initials(event.target.value) || '?'; });
+$('#worker-photo').onchange = async event => {
+  const file = event.target.files[0]; if (!file) return;
+  try {
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) throw new Error('Usa una foto JPG, PNG o WebP de hasta 15 MB.');
+    const bitmap = await createImageBitmap(file);
+    const size = 240, scale = Math.max(size / bitmap.width, size / bitmap.height);
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = size;
+    canvas.getContext('2d').drawImage(bitmap, (size - bitmap.width * scale) / 2, (size - bitmap.height * scale) / 2, bitmap.width * scale, bitmap.height * scale);
+    setWorkerPhoto(canvas.toDataURL('image/jpeg', 0.82), $('#worker-form').elements.name.value);
+  } catch (error) { errorToast(error.message ? error : new Error('No se pudo leer la foto.')); }
+  event.target.value = '';
+};
+$('#worker-photo-clear').onclick = () => setWorkerPhoto('', $('#worker-form').elements.name.value);
+$('#worker-form').addEventListener('submit', event => {
+  event.preventDefault();
+  try {
+    const data = Object.fromEntries(new FormData(event.target));
+    const isBase = baseWorkers.some(w => w.id === data.id);
+    const w = validateWorker({...data, id: data.id || `worker-${crypto.randomUUID()}`, photo: workerPhoto}, workers);
+    if (isBase) state.workerEdits[w.id] = {name: w.name, role: w.role, phone: w.phone, ...(workerPhoto ? {photo: workerPhoto} : {})};
+    else state.customWorkers = [...state.customWorkers.filter(x => x.id !== w.id), w];
+    persist(); refreshWorkers(); $('#worker-dialog').close();
+    if (view !== 'equipo') setView('equipo'); else render();
+    toast(data.id ? 'Trabajador actualizado.' : `${w.name} se agregó al equipo.`);
+  } catch (error) { errorToast(error); }
+});
+$('#worker-delete').onclick = () => {
+  const id = $('#worker-form').elements.id.value; const w = workers.find(x => x.id === id); if (!w) return;
+  const rooms = state.rooms.filter(r => r.workers.includes(id));
+  if (rooms.length) return errorToast(new Error(`Antes de eliminar a ${w.name}, reasigna ${rooms.length === 1 ? 'la habitación' : 'las habitaciones'} ${rooms.map(r => r.number).join(', ')}.`));
+  const button = $('#worker-delete');
+  if (!button.dataset.confirm) { button.dataset.confirm = '1'; button.textContent = '¿Eliminar? Confirmar'; return; }
+  state.workerArchive[id] = {id, name: w.name, photo: w.photo || ''};
+  if (baseWorkers.some(x => x.id === id)) state.removedWorkers.push(id); else state.customWorkers = state.customWorkers.filter(x => x.id !== id);
+  persist(); refreshWorkers(); $('#worker-dialog').close(); render(); toast(`${w.name} se retiró del equipo. Su historial se conserva.`);
+};
+
+// ---------- Materiales y pedidos ----------
+const payClass = p => ({'Por pagar':'n0', 'Abonado':'n1', 'Pagado':'n3'}[p]);
+const orderClass = o => ({'Por pedir':'pending', 'Pedido':'active', 'Recibido':'done'}[o]);
+const monthKey = () => today().slice(0, 7);
+function scopedMaterials() {
+  return state.materials.filter(m => materialScope === 'toOrder' ? m.orderStatus === 'Por pedir' : materialScope === 'owed' ? m.orderStatus !== 'Por pedir' && balance(m) > 0 : true);
+}
+function filteredMaterials() {
+  const normalize = v => String(v ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const q = normalize($('#m-search').value.trim()), order = $('#m-order-filter').value, pay = $('#m-pay-filter').value;
+  return scopedMaterials().filter(m => (order === 'all' || m.orderStatus === order) && (pay === 'all' || paymentStatus(m) === pay) && (materialRequester === 'all' || m.requestedBy === materialRequester) && normalize([m.name, m.supplier, m.notes, m.unit, state.rooms.find(r => r.id === m.roomId)?.number, workerName(m.requestedBy)].join(' ')).includes(q))
+    .sort((a, b) => orderStatuses.indexOf(a.orderStatus) - orderStatuses.indexOf(b.orderStatus) || b.date.localeCompare(a.date));
+}
+function renderMaterials() {
+  const toOrder = state.materials.filter(m => m.orderStatus === 'Por pedir').length;
+  $('#nav-material-count').textContent = toOrder;
+  document.querySelectorAll('[data-material-scope]').forEach(b => b.classList.toggle('selected', view === 'materiales' && b.dataset.materialScope === materialScope));
+  $('#material-bar').hidden = !(view === 'materiales' && materialSelected.size);
+  if (view !== 'materiales') return;
+  const stats = materialStats(state.materials, monthKey());
+  const monthName = new Intl.DateTimeFormat('es-CO', {month:'long', timeZone:'America/Bogota'}).format(new Date());
+  $('#m-month').textContent = cop(stats.monthSpent); $('#m-month-sub').textContent = `${stats.monthCount} ${stats.monthCount === 1 ? 'pedido' : 'pedidos'} en ${monthName}`;
+  $('#m-paid').textContent = cop(stats.paid);
+  $('#m-owed').textContent = cop(stats.owed); $('#m-owed-tag').textContent = `${stats.owedCount} ${stats.owedCount === 1 ? 'pedido' : 'pedidos'}`; $('#m-owed-tag').classList.toggle('ok', !stats.owed);
+  $('#m-toorder').textContent = stats.toOrder; $('#m-toorder-sub').textContent = stats.toOrderValue ? `Estimado ${cop(stats.toOrderValue)}` : 'Materiales sin pedir';
+  const requesters = [...new Set(state.materials.map(m => m.requestedBy).filter(Boolean))];
+  if (materialRequester !== 'all' && !requesters.includes(materialRequester)) materialRequester = 'all';
+  $('#m-requesters').innerHTML = requesters.length ? `<span class="requester-label">Pedido por</span><button class="req-chip ${materialRequester === 'all' ? 'selected' : ''}" data-requester="all">Todos</button>${requesters.map(id => `<button class="req-chip ${materialRequester === id ? 'selected' : ''}" data-requester="${e(id)}">${avatar(id)}${e(workerName(id).split(' ').slice(0, 2).join(' '))}<b>${state.materials.filter(m => m.requestedBy === id).length}</b></button>`).join('')}` : '';
+  document.querySelectorAll('[data-requester]').forEach(b => b.onclick = () => { materialRequester = b.dataset.requester; materialPage = 1; render(); });
+  const list = filteredMaterials();
+  for (const id of [...materialSelected]) if (!state.materials.some(m => m.id === id)) materialSelected.delete(id);
+  const size = Number($('#m-page-size').value), pages = Math.max(1, Math.ceil(list.length / size));
+  materialPage = Math.min(materialPage, pages);
+  const page = list.slice((materialPage - 1) * size, materialPage * size);
+  $('#m-showing').innerHTML = `Mostrando <b>${page.length} de ${list.length}</b> materiales${list.length !== state.materials.length ? ` (${state.materials.length} en total)` : ''}.`;
+  $('#m-page').textContent = `${materialPage}/${pages}`; $('#m-prev').disabled = materialPage <= 1; $('#m-next').disabled = materialPage >= pages;
+  const all = page.length && page.every(m => materialSelected.has(m.id));
+  $('#m-table').innerHTML = page.length ? `<div class="room-table-wrap"><table class="room-table material-table"><thead><tr><th><input type="checkbox" class="check" id="m-check-all" aria-label="Seleccionar materiales de esta página" ${all ? 'checked' : ''}></th><th>Material</th><th>Cantidad</th><th>Pedido</th><th>Pago</th><th>Valor</th><th>Saldo</th><th>Pedido por</th><th>Habitación</th><th></th></tr></thead><tbody>${page.map(m => {
+    const pay = paymentStatus(m), room = state.rooms.find(r => r.id === m.roomId), cls = orderClass(m.orderStatus);
+    return `<tr class="${materialSelected.has(m.id) ? 'checked' : ''}"><td><input type="checkbox" class="check" data-m-select="${e(m.id)}" aria-label="Seleccionar ${e(m.name)}" ${materialSelected.has(m.id) ? 'checked' : ''}></td><td><strong>${e(m.name)}</strong><small>${e([m.supplier, dateLabel(m.date + 'T12:00:00-05:00')].filter(Boolean).join(' · '))}</small></td><td class="nowrap">${e(String(m.quantity).replace('.', ','))} ${e(m.unit)}</td><td><span class="status-cell"><span class="status-icon ${cls}">${icon(m.orderStatus === 'Recibido' ? 'check' : m.orderStatus === 'Pedido' ? 'truck' : 'clock')}</span>${e(m.orderStatus)}</span></td><td><span class="prio ${payClass(pay)}">${e(pay)}</span></td><td class="nowrap">${cop(m.total)}</td><td class="nowrap ${balance(m) ? 'owed' : ''}">${cop(balance(m))}</td><td>${m.requestedBy ? `<span class="task-worker">${avatar(m.requestedBy)}<span>${e(workerName(m.requestedBy))}</span></span>` : '<span class="muted">—</span>'}</td><td>${room ? `<span class="pill">Hab. ${e(room.number)}</span>` : '<span class="muted">—</span>'}</td><td><button class="small-btn" data-m-edit="${e(m.id)}">${icon('edit')}Editar</button></td></tr>`;
+  }).join('')}</tbody></table></div>` : `<div class="empty-state compact"><div class="empty-icon">${icon('box')}</div><h3>${state.materials.length ? 'No hay materiales con esos filtros' : 'Registra el primer material'}</h3><p>${state.materials.length ? 'Prueba otra búsqueda, estado o persona.' : 'Anota lo que falta por pedir, lo pedido y lo pagado para saber cuánto se debe.'}</p>${state.materials.length ? '' : `<button class="button primary" id="empty-new-material">${icon('plus')}Nuevo pedido</button>`}</div>`;
+  $('#empty-new-material')?.addEventListener('click', () => editMaterial());
+  const checkAll = $('#m-check-all');
+  if (checkAll) { checkAll.indeterminate = !all && page.some(m => materialSelected.has(m.id)); checkAll.onchange = () => { page.forEach(m => checkAll.checked ? materialSelected.add(m.id) : materialSelected.delete(m.id)); render(); }; }
+  document.querySelectorAll('[data-m-select]').forEach(box => box.onchange = () => { box.checked ? materialSelected.add(box.dataset.mSelect) : materialSelected.delete(box.dataset.mSelect); render(); });
+  document.querySelectorAll('[data-m-edit]').forEach(b => b.onclick = () => editMaterial(b.dataset.mEdit));
+  $('#m-sel-count').textContent = materialSelected.size;
+  $('#material-bar').hidden = !materialSelected.size;
+}
+function updateBalanceHint() {
+  const f = $('#material-form').elements, total = parseMoney(f.total.value || 0), paid = parseMoney(f.paid.value || 0);
+  $('#material-balance').textContent = Number.isFinite(total) && Number.isFinite(paid) && total ? `Saldo por pagar: ${cop(Math.max(0, total - paid))} · ${paymentStatus({total, paid})}` : '';
+}
+function editMaterial(id) {
+  const m = state.materials.find(x => x.id === id);
+  $('#material-dialog').querySelector('.dialog-feedback')?.remove();
+  const form = $('#material-form'); form.reset();
+  $('#material-form-title').textContent = m ? 'Editar pedido' : 'Nuevo pedido';
+  form.elements.roomId.innerHTML = '<option value="">General / sin habitación</option>' + [...state.rooms].sort((a, b) => a.number.localeCompare(b.number, 'es', {numeric:true})).map(r => `<option value="${e(r.id)}">Hab. ${e(r.number)} · ${e(r.level)}</option>`).join('');
+  form.elements.requestedBy.innerHTML = '<option value="">Sin especificar</option>' + workers.map(w => `<option value="${w.id}">${e(w.name)}</option>`).join('');
+  const values = m || {id:'', name:'', quantity:'', unit:'', orderStatus:'Por pedir', date: today(), requestedBy: materialRequester !== 'all' ? materialRequester : '', roomId: activeRoom && $('#detail-dialog').open ? activeRoom : '', supplier:'', total:'', paid:'', notes:''};
+  for (const key of ['id','name','quantity','unit','orderStatus','date','requestedBy','roomId','supplier','total','paid','notes']) form.elements[key].value = values[key] ?? '';
+  if (m) { form.elements.total.value = m.total ? m.total.toLocaleString('es-CO') : ''; form.elements.paid.value = m.paid ? m.paid.toLocaleString('es-CO') : ''; }
+  updateBalanceHint();
+  $('#material-delete').hidden = !m; $('#material-delete').dataset.confirm = ''; $('#material-delete').textContent = 'Eliminar';
+  $('#material-dialog').showModal();
+}
+['total','paid'].forEach(k => $('#material-form').elements[k].addEventListener('input', updateBalanceHint));
+$('#material-form').addEventListener('submit', event => {
+  event.preventDefault();
+  try {
+    const data = Object.fromEntries(new FormData(event.target));
+    const existing = state.materials.find(m => m.id === data.id);
+    const m = validateMaterial({...existing, ...data, id: data.id || crypto.randomUUID(), createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString()}, state.rooms, workers);
+    state.materials = [...state.materials.filter(x => x.id !== m.id), m]; persist(); $('#material-dialog').close();
+    if (view !== 'materiales') setView('materiales'); else render();
+    toast(existing ? 'Pedido actualizado.' : 'Material registrado.');
+  } catch (error) { errorToast(error); }
+});
+$('#material-delete').onclick = () => {
+  const button = $('#material-delete');
+  if (!button.dataset.confirm) { button.dataset.confirm = '1'; button.textContent = '¿Eliminar? Confirmar'; return; }
+  const id = $('#material-form').elements.id.value;
+  state.materials = state.materials.filter(m => m.id !== id); materialSelected.delete(id); persist(); $('#material-dialog').close(); render(); toast('Pedido eliminado.');
+};
+
+// ---------- Reportes ----------
+let reportTab = 'avance';
+const monthLabel = key => { const [y, m] = key.split('-').map(Number); return new Intl.DateTimeFormat('es-CO', {month:'short', year:'2-digit', timeZone:'UTC'}).format(new Date(Date.UTC(y, m - 1, 15))); };
+function lastMonths(n) { const [y, m] = monthKey().split('-').map(Number); return Array.from({length:n}, (_, i) => { const d = new Date(Date.UTC(y, m - 1 - (n - 1 - i), 1)); return d.toISOString().slice(0, 7); }); }
+function barChart(items, format = v => v, cls = '') {
+  const max = Math.max(...items.map(i => i.value), 0);
+  return `<div class="report-chart ${cls}">${items.map(i => `<div class="report-col"><b>${e(format(i.value))}</b><div class="report-bar-fill ${i.cls || ''}" style="height:${max ? Math.max(4, i.value / max * 100) : 4}%"></div><small>${e(i.label)}</small></div>`).join('')}</div>`;
+}
+function hbars(items, format) {
+  const max = Math.max(...items.map(i => i.value), 0);
+  return items.length ? items.map(i => `<div class="hbar"><span>${e(i.label)}</span><div><i style="width:${max ? i.value / max * 100 : 0}%"></i></div><b>${e(format(i.value))}</b></div>`).join('') : '<p class="rail-empty">Sin datos todavía.</p>';
+}
+function insights() {
+  const list = [];
+  const overdue = state.tasks.filter(t => t.status !== 'Completada' && t.date < today()).length;
+  if (overdue) list.push(`${overdue} ${overdue === 1 ? 'tarea está vencida' : 'tareas están vencidas'}. Revisa la lista de tareas asignadas.`);
+  const st = materialStats(state.materials, monthKey());
+  if (st.owed) list.push(`Se deben ${cop(st.owed)} en ${st.owedCount} ${st.owedCount === 1 ? 'pedido' : 'pedidos'} de material.`);
+  if (st.toOrder) list.push(`Faltan ${st.toOrder} ${st.toOrder === 1 ? 'material' : 'materiales'} por pedir.`);
+  const review = state.rooms.filter(r => r.status === 'En revisión').length;
+  if (review) list.push(`${review} ${review === 1 ? 'habitación espera' : 'habitaciones esperan'} revisión antes de entregarse.`);
+  const noPhotos = state.rooms.filter(r => r.status !== 'Pendiente' && !state.records.some(x => x.roomId === r.id)).length;
+  if (noPhotos) list.push(`${noPhotos} ${noPhotos === 1 ? 'habitación en obra no tiene' : 'habitaciones en obra no tienen'} registro fotográfico.`);
+  return list.length ? `<ul class="insight-list">${list.map(i => `<li>${e(i)}</li>`).join('')}</ul>` : '<p class="rail-empty">Todo al día: no hay vencimientos, deudas ni pendientes destacados.</p>';
+}
+function renderReports() {
+  if (view !== 'reportes') return;
+  document.querySelectorAll('[data-report]').forEach(b => b.classList.toggle('selected', b.dataset.report === reportTab));
+  const monthSel = $('#report-month'), months = lastMonths(12);
+  if (monthSel.options.length !== months.length) { monthSel.innerHTML = months.slice().reverse().map(m => `<option value="${m}">${e(monthLabel(m))}</option>`).join(''); monthSel.value = monthKey(); }
+  const month = monthSel.value || monthKey();
+  monthSel.parentElement.hidden = reportTab !== 'materiales';
+  let html = '';
+  if (reportTab === 'avance') {
+    const sectors = [...new Set(state.rooms.map(r => r.level))];
+    const legend = `<div class="legend">${statuses.map(s => `<span class="${statusClass(s)}"><i></i>${e(s)}</span>`).join('')}</div>`;
+    const total = state.rooms.length, done = state.rooms.filter(r => r.status === 'Finalizada').length;
+    html = `<div class="report-grid"><div>${sectors.length ? sectors.map(sector => { const rs = state.rooms.filter(r => r.level === sector).sort((a, b) => a.number.localeCompare(b.number, 'es', {numeric:true})); return `<section class="sector-card panel-lite"><div class="sector-head"><h3>${e(sector)} <span class="count-chip">${rs.length}</span></h3>${legend}</div><div class="sector-rooms">${rs.map(room => `<button class="sector-room ${statusClass(room.status)}" data-report-room="${e(room.id)}" aria-label="Habitación ${e(room.number)}, ${e(room.status)}">${e(room.number)}<span class="tip"><b>Habitación</b>${e(room.number)}<br><b>Proceso</b>${e(room.process)}<br><b>Estado</b>${e(room.status)}<br><b>Fotos</b>${state.records.filter(r => r.roomId === room.id).length}</span></button>`).join('')}</div></section>`; }).join('') : `<div class="empty-state compact"><div class="empty-icon">${icon('chart')}</div><h3>Sin habitaciones registradas</h3><p>El reporte de avance aparecerá cuando registres habitaciones.</p></div>`}</div>
+      <aside><section class="rail-card"><div class="rail-heading"><h3>Avance general de la obra</h3></div><strong class="rail-big">${total ? Math.round(done / total * 100) : 0}%</strong><p class="rail-note">${done} de ${total} habitaciones finalizadas.</p>${barChart(sectors.map(sec => { const rs = state.rooms.filter(r => r.level === sec); return {label: sec, value: Math.round(rs.filter(r => r.status === 'Finalizada').length / rs.length * 100)}; }), v => `${v}%`, 'pct')}</section>
+      <section class="drive-callout"><h3>${icon('spark')}Observaciones</h3>${insights()}</section></aside></div>`;
+  } else if (reportTab === 'materiales') {
+    const ordered = state.materials.filter(m => m.orderStatus !== 'Por pedir');
+    const inMonth = ordered.filter(m => m.date.startsWith(month));
+    const byRoom = {}; inMonth.forEach(m => { const k = state.rooms.find(r => r.id === m.roomId) ? `Hab. ${state.rooms.find(r => r.id === m.roomId).number}` : 'General'; byRoom[k] = (byRoom[k] || 0) + m.total; });
+    const bySupplier = {}; ordered.forEach(m => { const k = m.supplier || 'Sin proveedor'; bySupplier[k] ||= {total:0, paid:0}; bySupplier[k].total += m.total; bySupplier[k].paid += m.paid; });
+    const st = materialStats(state.materials, month);
+    html = `<section class="stats money-stats report-kpis"><div class="stat"><div class="stat-label">${icon('cash')}Gasto de ${e(monthLabel(month))}</div><div class="stat-row"><strong>${cop(st.monthSpent)}</strong></div><small>${st.monthCount} pedidos</small></div><div class="stat"><div class="stat-label">${icon('check')}Pagado (total)</div><div class="stat-row"><strong>${cop(st.paid)}</strong></div><small>Abonos y pagos</small></div><div class="stat stat-owed"><div class="stat-label">${icon('clock')}Se debe</div><div class="stat-row"><strong>${cop(st.owed)}</strong></div><small>${st.owedCount} pedidos con saldo</small></div><div class="stat"><div class="stat-label">${icon('truck')}Por pedir</div><div class="stat-row"><strong>${st.toOrder}</strong></div><small>${st.toOrderValue ? `Estimado ${cop(st.toOrderValue)}` : 'Materiales sin pedir'}</small></div></section>
+      <div class="report-grid"><section class="rail-card"><div class="rail-heading"><h3>Gasto por mes</h3><span class="rail-tag">Últimos 6 meses</span></div>${barChart(lastMonths(6).map(k => ({label: monthLabel(k), value: ordered.filter(m => m.date.startsWith(k)).reduce((s, m) => s + m.total, 0), cls: k === month ? 'current' : ''})), v => v ? `$${Math.round(v / 1000).toLocaleString('es-CO')}k` : '$0')}</section>
+      <section class="rail-card"><div class="rail-heading"><h3>Gasto por habitación · ${e(monthLabel(month))}</h3></div>${hbars(Object.entries(byRoom).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({label, value})), cop)}</section></div>
+      <section class="rail-card"><div class="rail-heading"><h3>Cuentas por proveedor</h3></div>${Object.keys(bySupplier).length ? `<div class="room-table-wrap"><table class="room-table"><thead><tr><th>Proveedor</th><th>Comprado</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${Object.entries(bySupplier).sort((a, b) => (b[1].total - b[1].paid) - (a[1].total - a[1].paid)).map(([name, v]) => `<tr><td><strong>${e(name)}</strong></td><td>${cop(v.total)}</td><td>${cop(v.paid)}</td><td class="${v.total - v.paid ? 'owed' : ''}">${cop(v.total - v.paid)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="rail-empty">Aún no hay pedidos realizados.</p>'}</section>`;
+  } else {
+    const rows = workers.map(w => { const rooms = state.rooms.filter(r => r.workers.includes(w.id)); const tasks = state.tasks.filter(t => t.workerId === w.id); const orders = state.materials.filter(m => m.requestedBy === w.id); return {w, rooms: rooms.length, done: rooms.filter(r => r.status === 'Finalizada').length, open: tasks.filter(t => t.status !== 'Completada').length, closed: tasks.filter(t => t.status === 'Completada').length, orders: orders.length, value: orders.reduce((s, m) => s + m.total, 0)}; });
+    html = `<div class="report-grid"><section class="rail-card"><div class="rail-heading"><h3>Tareas completadas por persona</h3></div>${hbars(rows.filter(r => r.closed + r.open).sort((a, b) => b.closed - a.closed).map(r => ({label: r.w.name.split(' ').slice(0, 2).join(' '), value: r.closed})), v => `${v}`)}</section><section class="rail-card"><div class="rail-heading"><h3>Habitaciones por persona</h3></div>${hbars(rows.filter(r => r.rooms).sort((a, b) => b.rooms - a.rooms).map(r => ({label: r.w.name.split(' ').slice(0, 2).join(' '), value: r.rooms})), v => `${v}`)}</section></div>
+      <section class="rail-card"><div class="rail-heading"><h3>Resumen del equipo</h3><span class="rail-tag">${workers.length} personas</span></div><div class="room-table-wrap"><table class="room-table"><thead><tr><th>Persona</th><th>Habitaciones</th><th>Finalizadas</th><th>Tareas abiertas</th><th>Tareas hechas</th><th>Pedidos</th><th>Valor pedido</th></tr></thead><tbody>${rows.map(r => `<tr><td><span class="task-worker">${avatar(r.w.id)}<span><strong>${e(r.w.name)}</strong><small>${e(r.w.role || '')}</small></span></span></td><td>${r.rooms}</td><td>${r.done}</td><td>${r.open}</td><td>${r.closed}</td><td>${r.orders}</td><td class="nowrap">${cop(r.value)}</td></tr>`).join('')}</tbody></table></div></section>`;
+  }
+  $('#report-body').innerHTML = html;
+  document.querySelectorAll('[data-report-room]').forEach(b => b.onclick = () => openRoom(b.dataset.reportRoom));
+}
 function editRoom(id) {
   const room = state.rooms.find(r => r.id === id);
   $('#room-dialog').querySelector('.dialog-feedback')?.remove();
@@ -427,7 +646,7 @@ $('#pick-folder').onclick = async () => {
     const checked = await drive.checkFolder(folder.id);
     if (state.rootId !== folder.id) {
       persist();
-      if (state.rootId) { const tasks = state.tasks; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); state.tasks ||= tasks; }
+      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
       else { state.rootId = folder.id; state.rootName = checked.name; }
       activeRoom = null; if ($('#detail-dialog').open) $('#detail-dialog').close();
     }
@@ -436,7 +655,7 @@ $('#pick-folder').onclick = async () => {
 };
 $('#sync-button').onclick = () => synchronize().catch(errorToast);
 $('#new-room').onclick = $('#praise-new').onclick = () => editRoom();
-$('#heading-action').onclick = () => view === 'tareas' ? editTask() : editRoom();
+$('#heading-action').onclick = () => ({tareas:editTask, materiales:editMaterial, equipo:editWorker}[view] || editRoom)();
 $('#task-praise-new').onclick = $('#task-quick').onclick = () => editTask();
 $('#target-open').onclick = () => { taskScope = 'today'; render(); };
 $('#tasks-toggle').onclick = () => { const g = $('#tasks-group'); if (view !== 'tareas') { g.classList.add('open'); setView('tareas'); } else g.classList.toggle('open'); $('#tasks-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
@@ -459,6 +678,8 @@ document.querySelectorAll('[data-add-action]').forEach(button => button.onclick 
   if (action === 'room') editRoom();
   else if (action === 'drive') openDriveSettings();
   else if (action === 'task') editTask();
+  else if (action === 'material') editMaterial();
+  else if (action === 'worker') editWorker();
   else if (state.rooms.length) { setView('habitaciones'); setRoomMode('cards'); render(); toast('Abre una habitación con «Fotos» para registrar su proceso.'); }
   else toast('Primero crea una habitación para registrar sus fotos.');
 });
@@ -489,10 +710,38 @@ $('#status-filter').onchange = render;
 document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => { if (button.dataset.roomNav) setRoomMode(button.dataset.roomNav); setView(button.dataset.view); });
 document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => button.closest('dialog').close());
 $('#plan-image').src = $('#full-plan-image').src = $('#download-plan').href = plan;
+
+$('#add-worker').onclick = () => editWorker();
+document.querySelectorAll('[data-report]').forEach(b => b.onclick = () => { reportTab = b.dataset.report; render(); });
+$('#report-month').onchange = render;
+$('#report-print').onclick = () => window.print();
+$('#materials-toggle').onclick = () => { const g = $('#materials-group'); if (view !== 'materiales') { g.classList.add('open'); setView('materiales'); } else g.classList.toggle('open'); $('#materials-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
+document.querySelectorAll('[data-material-scope]').forEach(b => b.onclick = () => { materialScope = b.dataset.materialScope; materialPage = 1; if (view !== 'materiales') setView('materiales'); else { closeNav(); render(); } });
+['#m-order-filter','#m-pay-filter','#m-page-size'].forEach(sel => $(sel).addEventListener('change', () => { materialPage = 1; render(); }));
+$('#m-search').addEventListener('input', () => { materialPage = 1; render(); });
+$('#m-prev').onclick = () => { materialPage--; render(); };
+$('#m-next').onclick = () => { materialPage++; render(); };
+$('#m-sel-clear').onclick = () => { materialSelected.clear(); render(); };
+document.querySelectorAll('[data-bulk]').forEach(b => b.onclick = () => {
+  const now = new Date().toISOString();
+  for (const m of state.materials.filter(x => materialSelected.has(x.id))) {
+    if (b.dataset.bulk === 'pay') { if (m.orderStatus === 'Por pedir') m.orderStatus = 'Pedido'; m.paid = m.total; }
+    else m.orderStatus = b.dataset.bulk;
+    m.updatedAt = now;
+  }
+  const count = materialSelected.size; materialSelected.clear(); persist(); render();
+  toast(`${count} ${count === 1 ? 'material actualizado' : 'materiales actualizados'}.`);
+});
+$('#m-export').onclick = () => {
+  const csv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = filteredMaterials().map(m => [m.name, m.quantity, m.unit, m.orderStatus, paymentStatus(m), m.total, m.paid, balance(m), m.requestedBy ? workerName(m.requestedBy) : '', state.rooms.find(r => r.id === m.roomId)?.number || '', m.supplier, m.date, m.notes].map(csv).join(','));
+  const blob = new Blob(['﻿' + ['Material,Cantidad,Unidad,Pedido,Pago,Valor total,Pagado,Saldo,Pedido por,Habitación,Proveedor,Fecha,Notas', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-materiales-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 $('#export-button').onclick = () => {
   const blob = new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-respaldo-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
   toast('Respaldo de habitaciones y metadatos exportado. Las fotos pendientes permanecen en este dispositivo.');
 };
 setInterval(() => { if (!drive.connected && $('#drive-button').classList.contains('connected')) render(); }, 30000);
-setView(['habitaciones','tareas','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'habitaciones');
+setView(['habitaciones','tareas','materiales','reportes','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'habitaciones');

@@ -35,6 +35,13 @@
       <symbol id="i-task" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
       <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
       <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+      <symbol id="i-box" viewBox="0 0 24 24"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+      <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+      <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M19 8v6M16 11h6"/></symbol>
+      <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3M20 16V6"/></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7z"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     </defs>
   </svg>
@@ -50,6 +57,8 @@
       <div class="add-menu" id="add-menu" hidden>
         <button data-add-action="room"><svg><use href="#i-room"/></svg>Nueva habitación</button>
         <button data-add-action="task"><svg><use href="#i-task"/></svg>Nueva tarea</button>
+        <button data-add-action="material"><svg><use href="#i-box"/></svg>Nuevo pedido</button>
+        <button data-add-action="worker"><svg><use href="#i-user-plus"/></svg>Agregar trabajador</button>
         <button data-add-action="photos"><svg><use href="#i-camera"/></svg>Registrar fotos</button>
         <button data-add-action="drive"><svg><use href="#i-drive"/></svg>Configurar Drive</button>
       </div>
@@ -71,8 +80,17 @@
           <button class="sub-item" data-task-scope="today">Metas de hoy</button>
         </div>
       </div>
+      <div class="nav-group" id="materials-group">
+        <button class="nav-item nav-parent" id="materials-toggle" aria-expanded="false"><svg><use href="#i-box"/></svg><span>Materiales</span><span id="nav-material-count" class="nav-count">0</span><svg class="chev"><use href="#i-chevron"/></svg></button>
+        <div class="subnav">
+          <button class="sub-item" data-material-scope="all">Todos los pedidos</button>
+          <button class="sub-item" data-material-scope="toOrder">Por pedir</button>
+          <button class="sub-item" data-material-scope="owed">Por pagar</button>
+        </div>
+      </div>
       <button class="nav-item" data-view="registro"><svg><use href="#i-camera"/></svg><span>Registro fotográfico</span></button>
-      <button class="nav-item" data-view="equipo"><svg><use href="#i-users"/></svg><span>Equipo de obra</span><span class="nav-count">10</span></button>
+      <button class="nav-item" data-view="equipo"><svg><use href="#i-users"/></svg><span>Equipo de obra</span><span class="nav-count" id="nav-team-count">0</span></button>
+      <button class="nav-item" data-view="reportes"><svg><use href="#i-chart"/></svg><span>Reportes</span></button>
       <button class="nav-item" data-view="plano"><svg><use href="#i-plan"/></svg><span>Planta de referencia</span></button>
     </nav>
     <div class="sidebar-bottom">
@@ -169,12 +187,43 @@
         </div>
       </section>
 
+      <section id="view-materiales" class="view" hidden>
+        <section class="stats money-stats" aria-label="Resumen de materiales">
+          <div class="stat"><div class="stat-label"><svg><use href="#i-cash"/></svg>Gastado este mes</div><div class="stat-row"><strong id="m-month">$0</strong></div><small id="m-month-sub">Pedidos del mes</small></div>
+          <div class="stat"><div class="stat-label"><svg><use href="#i-check"/></svg>Pagado</div><div class="stat-row"><strong id="m-paid">$0</strong></div><small>Abonos y pagos registrados</small></div>
+          <div class="stat stat-owed"><div class="stat-label"><svg><use href="#i-clock"/></svg>Se debe <span class="clock-tag" id="m-owed-tag">0 pedidos</span></div><div class="stat-row"><strong id="m-owed">$0</strong></div><small>Saldo pendiente por cancelar</small></div>
+          <div class="stat"><div class="stat-label"><svg><use href="#i-truck"/></svg>Falta por pedir</div><div class="stat-row"><strong id="m-toorder">0</strong></div><small id="m-toorder-sub">Materiales sin pedir</small></div>
+        </section>
+        <div class="panel">
+          <div class="panel-heading">
+            <div><h2>Pedidos de material</h2><p class="panel-sub" id="m-showing">Mostrando 0 materiales.</p></div>
+            <div class="panel-tools">
+              <label class="select-pill"><svg><use href="#i-filter"/></svg><select id="m-order-filter" aria-label="Filtrar por estado del pedido"><option value="all">Todo pedido</option><option>Por pedir</option><option>Pedido</option><option>Recibido</option></select></label>
+              <label class="select-pill"><select id="m-pay-filter" aria-label="Filtrar por pago"><option value="all">Todo pago</option><option>Por pagar</option><option>Abonado</option><option>Pagado</option></select></label>
+              <button class="small-btn" id="m-export"><svg><use href="#i-download"/></svg>Exportar CSV</button>
+            </div>
+          </div>
+          <label class="top-search task-search m-search"><svg><use href="#i-search"/></svg><input id="m-search" placeholder="Buscar por material, proveedor o habitación…" aria-label="Buscar material"></label>
+          <div class="requester-row" id="m-requesters" aria-label="Filtrar por quién hizo el pedido"></div>
+          <div id="m-table"></div>
+          <div class="table-foot"><span>Filas por página <select id="m-page-size" aria-label="Filas por página"><option>10</option><option selected>25</option><option>50</option></select></span><span class="pager"><button class="small-btn" id="m-prev" aria-label="Página anterior">‹</button><b id="m-page">1/1</b><button class="small-btn" id="m-next" aria-label="Página siguiente">›</button></span></div>
+        </div>
+      </section>
+
+      <section id="view-reportes" class="view" hidden>
+        <div class="report-bar">
+          <div class="segmented" role="tablist" aria-label="Tipo de reporte"><button class="selected" data-report="avance">Avance de obra</button><button data-report="materiales">Materiales</button><button data-report="equipo">Equipo</button></div>
+          <div class="report-tools"><label class="select-pill"><select id="report-month" aria-label="Mes del reporte"></select></label><button class="button primary" id="report-print"><svg><use href="#i-print"/></svg>Exportar reporte</button></div>
+        </div>
+        <div id="report-body"></div>
+      </section>
+
       <section id="view-registro" class="view" hidden>
         <div class="panel"><div class="panel-heading"><div><h2>Registro fotográfico</h2><p class="panel-sub">Selecciona una habitación para registrar su proceso. Las fotos pendientes se conservan en este dispositivo hasta subirlas.</p></div><button class="button secondary" id="sync-button"><svg><use href="#i-sync"/></svg>Actualizar desde Drive</button></div><div id="global-gallery" class="gallery"></div></div>
       </section>
 
       <section id="view-equipo" class="view" hidden>
-        <div class="team-heading"><h2><span class="live-dot"></span>Equipo de obra <span class="count-chip">10</span></h2><p class="panel-sub">Selecciona dos personas distintas al crear o editar cada habitación.</p></div>
+        <div class="team-heading"><h2><span class="live-dot"></span>Equipo de obra <span class="count-chip" id="team-count">0</span></h2><p class="panel-sub">Agrega o retira personas. Cada habitación lleva dos responsables distintos.</p><button class="button primary team-add" id="add-worker"><svg><use href="#i-user-plus"/></svg>Agregar trabajador</button></div>
         <div id="team-grid" class="team-grid"></div>
       </section>
 
@@ -186,8 +235,11 @@
     </div>
   </main>
 
+  <div class="selection-bar" id="material-bar" hidden><span><b id="m-sel-count">0</b> seleccionados</span><button data-bulk="Pedido"><svg><use href="#i-truck"/></svg>Marcar pedido</button><button data-bulk="Recibido"><svg><use href="#i-box"/></svg>Recibido</button><button data-bulk="pay"><svg><use href="#i-cash"/></svg>Pagado</button><button id="m-sel-clear">Limpiar</button></div>
   <div class="selection-bar" id="selection-bar" hidden><span><b id="selection-count">0</b> seleccionadas</span><button id="selection-export"><svg><use href="#i-download"/></svg>Exportar CSV</button><button id="selection-clear">Limpiar</button></div>
 
+  <dialog id="material-dialog"><form id="material-form"><div class="dialog-heading"><div><p class="eyebrow">PEDIDOS DE MATERIAL</p><h2 id="material-form-title">Nuevo pedido</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><label>Material<input name="name" required maxlength="120" placeholder="Ej. Cemento gris"></label><div class="form-row"><label>Cantidad<input name="quantity" required inputmode="decimal" placeholder="Ej. 10"></label><label>Unidad<input name="unit" list="unit-list" maxlength="20" placeholder="bultos, m², und…"></label></div><datalist id="unit-list"><option>und</option><option>bultos</option><option>m²</option><option>m</option><option>kg</option><option>galones</option><option>cajas</option><option>rollos</option><option>láminas</option></datalist><div class="form-row"><label>Estado del pedido<select name="orderStatus"><option>Por pedir</option><option>Pedido</option><option>Recibido</option></select></label><label>Fecha<input type="date" name="date" required></label></div><div class="form-row"><label>Pedido por<select name="requestedBy"></select></label><label>Habitación<select name="roomId"></select></label></div><label>Proveedor<input name="supplier" maxlength="80" placeholder="Ej. Ferretería El Constructor"></label><div class="form-row"><label>Valor total (COP)<input name="total" inputmode="numeric" placeholder="0"></label><label>Pagado / abonado (COP)<input name="paid" inputmode="numeric" placeholder="0"></label></div><p class="money-hint" id="material-balance"></p><label>Notas<textarea name="notes" maxlength="1000" placeholder="Referencia, color, fecha de entrega…"></textarea></label><div class="dialog-actions"><button type="button" class="button secondary danger" id="material-delete" hidden>Eliminar</button><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar pedido</button></div></form></dialog>
+  <dialog id="worker-dialog"><form id="worker-form"><div class="dialog-heading"><div><p class="eyebrow">EQUIPO DE OBRA</p><h2 id="worker-form-title">Agregar trabajador</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><div class="worker-photo-row"><img id="worker-photo-preview" class="worker-preview" alt="" hidden><span class="worker-initials" id="worker-initials">?</span><label class="small-btn">Subir foto<input type="file" id="worker-photo" accept="image/jpeg,image/png,image/webp" hidden></label><button type="button" class="small-btn" id="worker-photo-clear" hidden>Quitar foto</button></div><label>Nombre completo<input name="name" required maxlength="80" placeholder="Ej. Ana María Pérez"></label><div class="form-row"><label>Oficio<input name="role" list="role-list" maxlength="40" placeholder="Maestro, ayudante…"></label><label>Teléfono<input name="phone" inputmode="tel" maxlength="20" placeholder="Opcional"></label></div><datalist id="role-list"><option>Maestro</option><option>Oficial</option><option>Ayudante</option><option>Electricista</option><option>Plomero</option><option>Pintor</option><option>Enchapador</option></datalist><p class="form-note">El equipo se guarda en este dispositivo y se incluye en «Exportar respaldo».</p><div class="dialog-actions"><button type="button" class="button secondary danger" id="worker-delete" hidden>Eliminar</button><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar</button></div></form></dialog>
   <dialog id="task-dialog"><form id="task-form"><div class="dialog-heading"><div><p class="eyebrow">MIS ASIGNACIONES</p><h2 id="task-form-title">Nueva tarea</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><label>Tarea<input name="title" required maxlength="140" placeholder="Ej. Revisar enchape del baño"></label><div class="form-row"><label>Prioridad<select name="priority"><option>Alta</option><option selected>Media</option><option>Baja</option></select></label><label>Estado<select name="status"><option>Pendiente</option><option>En progreso</option><option>Completada</option></select></label></div><div class="form-row"><label>Fecha límite<input type="date" name="date" required></label><label>Hora límite<input type="time" name="time"></label></div><div class="form-row"><label>Habitación<select name="roomId"></select></label><label>Responsable<select name="workerId"></select></label></div><label>Notas<textarea name="notes" maxlength="1000" placeholder="Detalles, materiales o pendientes"></textarea></label><p class="form-note">Las tareas se guardan en este dispositivo y se incluyen en «Exportar respaldo».</p><div class="dialog-actions"><button type="button" class="button secondary danger" id="task-delete" hidden>Eliminar</button><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar tarea</button></div></form></dialog>
   <dialog id="room-dialog"><form id="room-form"><div class="dialog-heading"><div><p class="eyebrow">ORGANIZACIÓN DE OBRA</p><h2 id="room-form-title">Nueva habitación</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><div class="form-row"><label>Habitación<input name="number" required maxlength="30" placeholder="Ej. 219"></label><label>Piso o sector<input name="level" required maxlength="60" placeholder="Ej. Segundo piso"></label></div><label>Proceso de obra<select name="process" id="room-process" required></select></label><div class="form-row"><label>Maestro encargado 1<select name="worker1" required></select></label><label>Maestro encargado 2<select name="worker2" required></select></label></div><label>Estado<select name="status"><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="Alcance, pendientes o indicaciones para el equipo"></textarea></label><p class="form-note">Las asignaciones se guardan en este dispositivo. Al sincronizar, también se guardan en la carpeta de Drive del proyecto.</p><div class="dialog-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar habitación</button></div></form></dialog>
   <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
