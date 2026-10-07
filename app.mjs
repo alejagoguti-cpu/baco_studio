@@ -10,7 +10,7 @@ const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; }
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; state.plans ||= {}; }
 ensureState();
 let workers = [];
 function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
@@ -85,13 +85,13 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], inicio:['Inicio', 'Objetivo del día y entregas de la obra.', 'Inicio'], habitaciones:['Habitaciones', 'Asigna responsables y procesos, y documenta el avance de cada espacio.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {reportes:['Reportes de obra', 'Avance, gastos y desempeño del equipo en un solo lugar.', 'Reportes'], materiales:['Materiales y pedidos', 'Controla qué falta por pedir, qué llegó y cuánto se debe.', 'Materiales'], tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], inicio:['Inicio', 'Objetivo del día y entregas de la obra.', 'Inicio'], habitaciones:['Habitaciones', 'Asigna responsables y procesos, y documenta el avance de cada espacio.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planos de la obra', 'Arquitectónico, eléctrico, hidráulico y federado.', 'Planos']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
   $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
-  $('#overview').hidden = ['plano','tareas','materiales','reportes','inicio'].includes(next);
+  $('#overview').hidden = ['plano','tareas','materiales','reportes','inicio','habitaciones'].includes(next);
   $('#heading-action').hidden = next === 'plano' || next === 'reportes';
   $('#heading-action').lastChild.textContent = {inicio:'Nueva entrega', tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
   $('#materials-toggle').classList.toggle('active', next === 'materiales');
@@ -122,11 +122,7 @@ function render() {
   $('#goal-today-text').classList.toggle('goal-empty', !goal);
   $('#goal-edit').firstChild.textContent = goal ? 'Cambiar objetivo ' : 'Definir objetivo ';
   $('#goal-date').textContent = longDate(today());
-  $('#done-percent').textContent = `${total ? Math.round(countBy('Finalizada') / total * 100) : 0}%`;
-  $('#done-date').textContent = dateLabel(new Date().toISOString());
   const progress = total ? Math.round(state.rooms.reduce((sum, r) => sum + statuses.indexOf(r.status), 0) / (total * (statuses.length - 1)) * 100) : 0;
-  $('#rail-percent').textContent = `${progress}%`;
-  $('#rail-note').textContent = total ? `Avance promedio por etapa en ${total} ${total === 1 ? 'habitación' : 'habitaciones'}.` : 'Sin habitaciones registradas.';
   $('#pending-pill').hidden = !pendingPhotos; $('#pending-pill').textContent = `${pendingPhotos} pendientes`;
   $('#nav-count').textContent = total;
   $('#drive-status').textContent = drive.connected ? 'Drive conectado' : 'Conectar Drive';
@@ -168,13 +164,6 @@ function render() {
   $('#selection-count').textContent = selected.size;
 
   const max = Math.max(...statuses.map(countBy), 1);
-  $('#status-summary').innerHTML = statuses.map(status => {
-    const count = countBy(status);
-    return `<div class="status-col ${statusClass(status)}"><b>${count}</b><div class="bar" style="height:${count ? count / max * 100 : 4}%"></div><small>${e(status)}</small></div>`;
-  }).join('');
-  const recent = [...state.records].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
-  $('#recent-activity').innerHTML = recent.length ? recent.map(record => `<div class="activity-item">${avatar(record.workers[0])}<div><p><b>@${e(workerName(record.workers[0]).split(' ')[0])}</b> registró ${e(record.process.toLowerCase())} en Hab. ${e(state.rooms.find(r => r.id === record.roomId)?.number || '')}</p><small>${e(dateLabel(record.date+'T12:00:00-05:00'))} · ${record.pending ? 'Pendiente' : 'En Drive'}</small></div></div>`).join('') : '<p class="rail-empty">Aún no hay registros.<br>Las fotos que agregues aparecerán aquí.</p>';
-
   $('#nav-team-count').textContent = $('#team-count').textContent = workers.length;
   $('#team-grid').innerHTML = workers.length ? workers.map(w => {
     const assigned = state.rooms.filter(r => r.workers.includes(w.id));
@@ -188,6 +177,7 @@ function render() {
   renderMaterials();
   renderReports();
   renderMilestones();
+  renderPlans();
   enhance(document);
 }
 
@@ -573,6 +563,53 @@ function removeProcess(name) {
 }
 const selectConfig = select => select.name === 'process' ? {onAdd: addProcess, addLabel: 'Agregar proceso', addPlaceholder: 'Ej. Instalación de cielo raso', onRemove: removeProcess, removable: v => state.customProcesses.includes(v)} : {};
 const enhance = root => enhanceSelects(root, selectConfig);
+
+// ---------- Planos ----------
+const planTypes = [['arq','Arquitectónico'], ['ele','Eléctrico'], ['hid','Hidráulico'], ['fed','Federado']];
+const planTabs = {habitaciones:'arq', plano:'arq'};
+const planUrls = new Map();
+let planZoom = false;
+async function planSource(key) {
+  const meta = state.plans[key];
+  if (!meta) return key === 'arq' ? {url: plan, mime:'image/png', name:'Baco-Studio-planta.png', supplied:true} : null;
+  if (planUrls.has(key) && planUrls.get(key).at === meta.updatedAt) return {...planUrls.get(key), ...meta};
+  const blob = await blobStore(`plan:${key}`, 'get');
+  if (!blob) return null;
+  const url = URL.createObjectURL(blob); planUrls.set(key, {url, at: meta.updatedAt}); return {url, ...meta};
+}
+async function renderPlans() {
+  const targets = view === 'habitaciones' ? [['habitaciones', $('#rooms-plan')]] : view === 'plano' ? [['plano', $('#full-plan')]] : [];
+  for (const [where, box] of targets) {
+    const key = planTabs[where], label = planTypes.find(p => p[0] === key)[1], large = where === 'plano';
+    const sig = `${key}|${state.plans[key]?.updatedAt || ''}|${planZoom}|${Object.keys(state.plans).join()}`;
+    if (box.dataset.sig === sig) continue;
+    box.dataset.sig = sig;
+    const src = await planSource(key).catch(() => null);
+    if (planTabs[where] !== key || view !== where) return;
+    const media = !src ? `<div class="plan-empty"><div class="empty-icon">${icon('plan')}</div><h3>Plano ${e(label.toLowerCase())}</h3><p>Aún no has cargado este plano. Sube una imagen (JPG, PNG o WebP) o un PDF.</p><label class="button primary">${icon('upload')}Subir plano<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label></div>`
+      : src.mime === 'application/pdf' ? `<iframe class="plan-pdf" src="${src.url}#view=FitH" title="Plano ${e(label)}"></iframe>`
+      : `<img class="plan-img ${large && planZoom ? 'zoomed' : ''}" src="${src.url}" alt="Plano ${e(label)}" ${large ? 'data-plan-zoom' : 'data-plan-open'}>`;
+    box.innerHTML = `<div class="plan-head"><div><h2>${large ? 'Planos de la obra' : 'Planos'}</h2><p class="panel-sub">${src ? e(src.supplied ? 'Plano suministrado, sin modificaciones.' : `${src.name} · actualizado ${dateLabel(src.updatedAt)}`) : 'Sin cargar'}</p></div>${src ? `<div class="plan-actions">${!large ? `<button class="small-btn" data-plan-open>${icon('expand')}Ampliar</button>` : src.mime !== 'application/pdf' ? `<button class="small-btn" data-plan-zoom>${icon('zoom')}${planZoom ? 'Ajustar' : 'Acercar'}</button>` : ''}<a class="small-btn" href="${src.url}" download="${e(src.name)}">${icon('download')}Descargar</a><label class="small-btn">${icon('upload')}${src.supplied ? 'Reemplazar' : 'Cambiar'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-plan-upload="${key}" hidden></label>${!src.supplied ? `<button class="small-btn" data-plan-remove="${key}">${icon('trash')}</button>` : ''}</div>` : ''}</div>
+      <div class="segmented plan-tabs" role="tablist" aria-label="Tipo de plano">${planTypes.map(([k, l]) => `<button role="tab" aria-selected="${k === key}" class="${k === key ? 'selected' : ''}" data-plan-tab="${k}">${e(l)}${state.plans[k] || k === 'arq' ? '' : '<i class="plan-dot" title="Sin cargar"></i>'}</button>`).join('')}</div>
+      <div class="plan-stage ${large && planZoom ? 'zoom' : ''}">${media}</div>`;
+    box.querySelectorAll('[data-plan-tab]').forEach(b => b.onclick = () => { planTabs[where] = b.dataset.planTab; planZoom = false; renderPlans(); });
+    box.querySelectorAll('[data-plan-open]').forEach(b => b.onclick = () => { planTabs.plano = key; setView('plano'); });
+    box.querySelectorAll('[data-plan-zoom]').forEach(b => b.onclick = () => { planZoom = !planZoom; renderPlans(); });
+    box.querySelectorAll('[data-plan-upload]').forEach(input => input.onchange = () => uploadPlan(input.dataset.planUpload, input.files[0]).catch(errorToast));
+    box.querySelectorAll('[data-plan-remove]').forEach(b => b.onclick = () => {
+      if (!b.dataset.confirm) { b.dataset.confirm = '1'; b.lastChild.textContent = ''; b.append(' ¿Quitar?'); return; }
+      const k = b.dataset.planRemove; delete state.plans[k]; persist(); blobStore(`plan:${k}`, 'delete').catch(() => {}); const u = planUrls.get(k); if (u) URL.revokeObjectURL(u.url); planUrls.delete(k); renderPlans(); toast('Plano retirado.');
+    });
+  }
+}
+async function uploadPlan(key, file) {
+  if (!file) return;
+  if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)) throw new Error('Sube el plano como JPG, PNG, WebP o PDF.');
+  if (file.size > 40 * 1024 * 1024) throw new Error('El plano debe pesar máximo 40 MB.');
+  await blobStore(`plan:${key}`, 'put', file);
+  state.plans[key] = {name: file.name, mime: file.type, updatedAt: new Date().toISOString()}; persist();
+  renderPlans(); toast(`Plano ${planTypes.find(p => p[0] === key)[1].toLowerCase()} cargado.`);
+}
 function editRoom(id) {
   const room = state.rooms.find(r => r.id === id);
   $('#room-dialog').querySelector('.dialog-feedback')?.remove();
@@ -763,7 +800,7 @@ $('#pick-folder').onclick = async () => {
     const checked = await drive.checkFolder(folder.id);
     if (state.rootId !== folder.id) {
       persist();
-      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive','milestones','goals','customProcesses']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
+      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive','milestones','goals','customProcesses','plans']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
       else { state.rootId = folder.id; state.rootName = checked.name; }
       activeRoom = null; if ($('#detail-dialog').open) $('#detail-dialog').close();
     }
@@ -787,7 +824,7 @@ $('#task-export').onclick = () => {
   const blob = new Blob(['\ufeff' + ['Tarea,Estado,Prioridad,Habitación,Responsable,Fecha,Hora,Notas', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-tareas-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
-$('#drive-button').onclick = $('#rail-connect').onclick = $('#sidebar-drive').onclick = openDriveSettings;
+$('#drive-button').onclick = $('#sidebar-drive').onclick = openDriveSettings;
 $('#bell').onclick = () => setView('registro');
 const addMenu = $('#add-menu');
 $('#add-menu-toggle').onclick = event => { event.stopPropagation(); addMenu.hidden = !addMenu.hidden; $('#add-menu-toggle').setAttribute('aria-expanded', String(!addMenu.hidden)); };
@@ -826,12 +863,11 @@ $('#selection-export').onclick = () => {
   const blob = new Blob(['﻿' + ['Habitación,Sector,Proceso,Estado,Maestro 1,Maestro 2,Observaciones', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-habitaciones-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
-$('#plan-preview').onclick = () => setView('plano');
 $('#search').oninput = () => { if (view !== 'habitaciones') setView('habitaciones'); else render(); };
 $('#status-filter').onchange = render;
 document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => { if (button.dataset.roomNav) setRoomMode(button.dataset.roomNav); setView(button.dataset.view); });
 document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => button.closest('dialog').close());
-$('#plan-image').src = $('#full-plan-image').src = $('#download-plan').href = plan;
+
 
 $('#add-worker').onclick = () => editWorker();
 document.querySelectorAll('[data-report]').forEach(b => b.onclick = () => { reportTab = b.dataset.report; render(); });

@@ -628,3 +628,26 @@ label,.select-pill,.table-foot span{position:relative}
 ::-webkit-scrollbar-corner{background:transparent}
 dialog{overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
 dialog::-webkit-scrollbar-track{margin:18px 0}
+/* Habitaciones: planos a la izquierda, tarjetas a la derecha */
+.rooms-layout{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start}
+.plan-panel{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
+.rooms-layout .plan-panel{position:sticky;top:84px;height:calc(100dvh - 215px);min-height:480px}
+.plan-large{height:calc(100dvh - 230px);min-height:520px}
+.plan-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.plan-actions{display:flex;gap:6px;flex-wrap:wrap}
+.plan-actions label.small-btn{cursor:pointer}
+.plan-tabs{display:flex;width:100%}
+.plan-tabs button{flex:1;position:relative;white-space:nowrap}
+.plan-dot{position:absolute;top:6px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--orange)}
+.plan-stage{flex:1;min-height:0;border:1px solid var(--line-2);border-radius:16px;background:#fcfbf9;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px}
+.plan-stage.zoom{overflow:auto;align-items:flex-start;justify-content:flex-start}
+.plan-img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+.plan-img.zoomed{max-width:none;max-height:none;width:220%;cursor:zoom-out}
+.plan-pdf{width:100%;height:100%;border:0;border-radius:10px;background:#fff}
+.plan-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;max-width:320px}
+.plan-empty p{font-size:12.5px;color:var(--muted)}
+.plan-empty label{cursor:pointer}
+.rooms-layout .rooms-panel .room-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rooms-layout .rooms-panel .panel-heading{flex-direction:column;align-items:stretch}
+.rooms-layout .rooms-panel .panel-tools{justify-content:space-between}
+@media(max-width:1100px){.rooms-layout{grid-template-columns:1fr}.rooms-layout .plan-panel{position:static;height:62vh}}

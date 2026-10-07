@@ -44,6 +44,9 @@
       <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7h-3M7 14h10v7H7z"/></symbol>
       <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
       <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 8.5l5-5 5 5M4 20h16"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+      <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     </defs>
   </svg>
@@ -95,7 +98,7 @@
       <button class="nav-item" data-view="registro"><svg><use href="#i-camera"/></svg><span>Registro fotográfico</span></button>
       <button class="nav-item" data-view="equipo"><svg><use href="#i-users"/></svg><span>Equipo de obra</span><span class="nav-count" id="nav-team-count">0</span></button>
       <button class="nav-item" data-view="reportes"><svg><use href="#i-chart"/></svg><span>Reportes</span></button>
-      <button class="nav-item" data-view="plano"><svg><use href="#i-plan"/></svg><span>Planta de referencia</span></button>
+      <button class="nav-item" data-view="plano"><svg><use href="#i-plan"/></svg><span>Planos</span></button>
     </nav>
     <div class="sidebar-bottom">
       <button class="nav-item" id="sidebar-drive"><svg><use href="#i-settings"/></svg><span>Configuración</span></button>
@@ -141,16 +144,8 @@
       </section>
 
       <section id="view-habitaciones" class="view" hidden>
-        <div class="hero-row">
-          <div class="progress-card"><small>Habitaciones finalizadas</small><strong id="done-percent">0%</strong><span id="done-date"></span></div>
-          
-          <button class="plan-card" id="plan-preview" aria-label="Abrir planta de referencia">
-            <div class="plan-text"><span class="plan-icons"><span><svg><use href="#i-plan"/></svg></span><span><svg><use href="#i-camera"/></svg></span></span><h2>Planta de referencia<br>Acceso rápido</h2><p>Consulta el plano original para orientar el seguimiento de cada habitación.</p><span class="plan-cta" id="show-plan">Explorar la planta <svg><use href="#i-arrow"/></svg></span></div>
-            <div class="plan-thumb"><img id="plan-image" alt="Planta arquitectónica proporcionada por Baco Studio"></div>
-          </button>
-        </div>
-
-        <div class="room-workspace">
+        <div class="rooms-layout">
+          <aside class="panel plan-panel" id="rooms-plan" aria-label="Planos de la obra"></aside>
           <div class="panel rooms-panel">
             <div class="panel-heading">
               <div><h2>Habitaciones <span class="count-chip" id="rooms-count">0</span></h2><p class="panel-sub" id="rooms-sub">Asignaciones y estado de cada espacio.</p></div>
@@ -161,26 +156,8 @@
             </div>
             <div id="room-grid" class="room-grid"></div>
           </div>
-          <aside class="activity-rail">
-            <section class="rail-card">
-              <div class="rail-heading"><h3>Estado del proyecto</h3><span class="more">···</span></div>
-              <strong class="rail-big" id="rail-percent">0%</strong>
-              <p class="rail-note" id="rail-note">Sin habitaciones registradas.</p>
-              <div class="status-chart" id="status-summary"></div>
-            </section>
-            <section class="rail-card">
-              <div class="rail-heading"><h3><svg><use href="#i-bell"/></svg>Actividad reciente</h3><span class="rail-tag">Fotos</span></div>
-              <div id="recent-activity"></div>
-            </section>
-            <section class="drive-callout">
-              <h3><svg><use href="#i-spark"/></svg>Archivo en Drive</h3>
-              <p>Las fotografías del proceso se organizan por habitación y proceso en Google Drive, para todo el equipo.</p>
-              <button class="text-button" id="rail-connect">Configurar Drive <svg><use href="#i-arrow"/></svg></button>
-            </section>
-          </aside>
         </div>
       </section>
-
       <section id="view-tareas" class="view" hidden>
         <div class="panel tasks-panel">
           <div class="panel-heading">
@@ -243,7 +220,7 @@
       </section>
 
       <section id="view-plano" class="view" hidden>
-        <div class="panel"><div class="panel-heading"><div><h2>Planta de referencia</h2><p class="panel-sub">Plano suministrado. La numeración y la correspondencia espacial de las habitaciones están pendientes de confirmar.</p></div><a id="download-plan" class="button primary" download="Baco-Studio-planta.png"><svg><use href="#i-download"/></svg>Descargar planta</a></div><div class="full-plan"><img id="full-plan-image" alt="Planta arquitectónica original sin modificar"></div></div>
+        <div class="panel plan-panel plan-large" id="full-plan"></div>
       </section>
 
       <footer><span>BACO STUDIO</span><span>Diseñar. Construir. Documentar.</span></footer>

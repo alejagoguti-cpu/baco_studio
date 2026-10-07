@@ -21,6 +21,8 @@ También puede alojarse como web estática en HTTPS, conservando la estructura d
 
 ## Uso
 
+- **Habitaciones**: a la izquierda los planos (arquitectónico, eléctrico, hidráulico y federado) y a la derecha las tarjetas de las habitaciones. Cada plano se sube como imagen o PDF (hasta 40 MB), se guarda en este dispositivo y se puede ampliar, descargar o cambiar. El arquitectónico suministrado viene cargado.
+
 - **Procesos propios**: en «Proceso de obra», abre la lista y usa «+ Agregar proceso». Los procesos agregados se pueden quitar con × si ninguna habitación o foto los usa.
 
 - **Inicio**: muestra solo el objetivo del día, los objetivos de la semana, la cuenta regresiva a la próxima entrega y la lista de entregas, en una pantalla sin desplazamiento.
