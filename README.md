@@ -21,6 +21,8 @@ También puede alojarse como web estática en HTTPS, conservando la estructura d
 
 ## Uso
 
+- **Procesos propios**: en «Proceso de obra», abre la lista y usa «+ Agregar proceso». Los procesos agregados se pueden quitar con × si ninguna habitación o foto los usa.
+
 - **Inicio**: muestra solo el objetivo del día, los objetivos de la semana, la cuenta regresiva a la próxima entrega y la lista de entregas, en una pantalla sin desplazamiento.
 - **Entregas** (en Inicio): registra cada entrega (por ejemplo, «Primera entrega», 9 de octubre) con las habitaciones que incluye; se ve cuántos días faltan y cuántas habitaciones están finalizadas. 
 - **Objetivo diario**: el objetivo cambia cada día; escríbelo en la tarjeta «Objetivo de hoy» o planea los próximos días en «Objetivos de la semana» del Inicio. También aparece en Tareas.

@@ -584,3 +584,47 @@ body[data-view="inicio"] .content{padding-bottom:20px}
 .goal-date{text-transform:none}
 .goal-date::first-letter{text-transform:uppercase}
 .home{height:calc(100dvh - 215px)}
+/* Listas desplegables propias */
+select.cs-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;padding:0!important;border:0!important;margin:0!important}
+label,.select-pill,.table-foot span{position:relative}
+.cs-button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;background:#fcfbf9;padding:11px 13px;font-size:13px;font-weight:400;color:var(--ink);text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.cs-button:hover{border-color:#d6d0c8}
+.cs-button.open,.cs-button:focus-visible{outline:none;border-color:var(--indigo);box-shadow:0 0 0 3px #4d3fc61f}
+.cs-button.cs-placeholder .cs-value{color:var(--faint)}
+.cs-button.cs-invalid{border-color:#e88}
+.cs-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-chev{width:16px;height:16px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.cs-button.open .cs-chev{transform:rotate(180deg)}
+.select-pill .cs-button,.table-foot .cs-button{border:0;background:none;padding:8px 4px;font-size:12px;width:auto;box-shadow:none;gap:6px}
+.table-foot .cs-button{display:inline-flex;border:1px solid var(--line);border-radius:8px;padding:3px 8px;margin-left:6px;background:#fff}
+.cs-panel{position:fixed;z-index:10000;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px #1d1b2226,0 2px 6px #1d1b220d;padding:6px;display:flex;flex-direction:column;max-width:min(420px,calc(100vw - 16px));overflow:hidden;animation:cs-in .12s ease-out}
+@keyframes cs-in{from{opacity:0;transform:translateY(-4px)}}
+.cs-panel:focus{outline:none}
+.cs-list{overflow:auto;min-height:0;flex:1}
+.cs-option{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;font-size:13px;color:var(--ink-2);cursor:pointer;line-height:1.35}
+.cs-option.active{background:var(--line-2);color:var(--ink)}
+.cs-option.selected{background:var(--orange-soft);color:var(--orange-2);font-weight:600}
+.cs-option.selected.active{background:#ffe5d6}
+.cs-option.cs-empty{color:var(--muted)}
+.cs-check{width:15px;height:15px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.cs-option.selected .cs-check{opacity:1}
+.cs-option span{flex:1}
+.cs-remove{border:0;background:none;color:var(--faint);font-size:16px;line-height:1;padding:0 4px;border-radius:6px}
+.cs-remove:hover{color:#c43a3a;background:var(--red-soft)}
+.cs-add{border-top:1px solid var(--line-2);margin-top:4px;padding-top:6px}
+.cs-add-open{width:100%;text-align:left;border:0;background:none;color:var(--indigo);font-size:13px;font-weight:600;padding:9px 10px;border-radius:10px}
+.cs-add-open:hover{background:var(--indigo-soft)}
+.cs-add-form{display:flex;gap:6px;padding:4px}
+.cs-add-form input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;background:#fcfbf9}
+.cs-add-form input:focus{outline:none;border-color:var(--indigo)}
+.cs-add-form button{border:0;background:var(--indigo);color:#fff;border-radius:10px;padding:0 12px;font-size:12.5px;font-weight:600}
+.cs-add-error{font-size:12px;color:#c43a3a;padding:4px 10px 2px}
+/* Barras de desplazamiento */
+*{scrollbar-width:thin;scrollbar-color:#ddd6ce transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#ddd6ce;border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:#c9c0b6;background-clip:padding-box;border:3px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+dialog{overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+dialog::-webkit-scrollbar-track{margin:18px 0}

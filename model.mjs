@@ -1,11 +1,11 @@
 export const processes = ['Demolición y retiro', 'Mampostería', 'Redes eléctricas', 'Redes hidrosanitarias', 'Telecomunicaciones', 'Pañete y resanes', 'Impermeabilización', 'Pisos y enchapes', 'Carpintería', 'Pintura y acabados', 'Instalación de mobiliario', 'Revisión y entrega'];
 export const statuses = ['Pendiente', 'En proceso', 'En revisión', 'Finalizada'];
 export const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-export function validateRoom(room, rooms, workers) {
+export function validateRoom(room, rooms, workers, extraProcesses = []) {
   if (!room.number?.trim() || !room.level?.trim()) throw new Error('Indica la habitación y el piso o sector.');
   if (rooms.some(r => r.id !== room.id && r.number.trim().toLowerCase() === room.number.trim().toLowerCase() && r.level.trim().toLowerCase() === room.level.trim().toLowerCase())) throw new Error('Esta habitación ya está registrada en ese piso o sector.');
   if (!Array.isArray(room.workers) || room.workers.length !== 2 || room.workers[0] === room.workers[1] || !room.workers.every(id => workers.some(w => w.id === id))) throw new Error('Selecciona dos maestros distintos del equipo.');
-  if (!processes.includes(room.process) || !statuses.includes(room.status)) throw new Error('Selecciona un proceso y un estado válidos.');
+  if (![...processes, ...extraProcesses].includes(room.process) || !statuses.includes(room.status)) throw new Error('Selecciona un proceso y un estado válidos.');
   return {...room, number: room.number.trim(), level: room.level.trim()};
 }
 export function filterRooms(rooms, query, status, workers) {
@@ -90,3 +90,11 @@ export function validateGoal(g) {
 }
 export const daysBetween = (from, to) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
 export const nextMilestone = (milestones, today) => [...milestones].filter(m => !m.done && m.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+export function validateProcessName(name, existing) {
+  const clean = String(name ?? '').trim().replace(/\s+/g, ' ');
+  if (clean.length < 3) throw new Error('Escribe el nombre del proceso (mínimo 3 letras).');
+  if (clean.length > 60) throw new Error('El proceso debe tener máximo 60 caracteres.');
+  const norm = v => v.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  if (existing.some(p => norm(p) === norm(clean))) throw new Error('Ese proceso ya existe.');
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}

@@ -1,13 +1,16 @@
 import { workers as baseWorkers, plan } from './assets.mjs';
 import { Drive } from './drive.mjs';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
+import { enhanceSelects, syncSelects } from './select.mjs';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
 
 const $ = selector => document.querySelector(selector);
+const nativeShowModal = HTMLDialogElement.prototype.showModal;
+HTMLDialogElement.prototype.showModal = function () { nativeShowModal.call(this); syncSelects(this); };
 const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; }
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; }
 ensureState();
 let workers = [];
 function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
@@ -23,6 +26,7 @@ let roomMode = 'cards';
 let syncing = false;
 let uploadBusy = false;
 const urls = new Map();
+const allProcesses = () => [...processes, ...state.customProcesses];
 const worker = id => workers.find(w => w.id === id) || state.workerArchive[id];
 const initials = name => String(name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
 const photoOf = w => w?.photo || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='#efedfb'/><text x='32' y='40' font-family='Arial' font-size='24' font-weight='700' fill='#4d3fc6' text-anchor='middle'>${initials(w?.name).replace(/[<&]/g, '')}</text></svg>`)}`;
@@ -109,8 +113,8 @@ function render() {
   $('#stat-active').textContent = pad(countBy('En proceso'));
   $('#stat-photos').textContent = pad(uploaded.length);
   bars($('#bars-rooms'), statuses.map(countBy));
-  bars($('#bars-process'), processes.map(p => state.rooms.filter(r => r.process === p && r.status !== 'Finalizada').length));
-  bars($('#bars-photos'), processes.map(p => uploaded.filter(r => r.process === p).length));
+  bars($('#bars-process'), allProcesses().map(p => state.rooms.filter(r => r.process === p && r.status !== 'Finalizada').length));
+  bars($('#bars-photos'), allProcesses().map(p => uploaded.filter(r => r.process === p).length));
   $('#stat-photo-caption').textContent = pendingPhotos ? `${pendingPhotos} fotos pendientes de subir` : drive.connected ? 'Fotos consultadas en este proyecto' : 'Conecta Drive para consultar';
   renderClock();
   const goal = state.goals[today()]?.text;
@@ -184,6 +188,7 @@ function render() {
   renderMaterials();
   renderReports();
   renderMilestones();
+  enhance(document);
 }
 
 const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
@@ -547,13 +552,34 @@ $('#milestone-delete').onclick = () => {
   const id = $('#milestone-form').elements.id.value;
   state.milestones = state.milestones.filter(m => m.id !== id); persist(); $('#milestone-dialog').close(); render(); toast('Entrega eliminada.');
 };
+
+// ---------- Procesos propios y listas desplegables ----------
+function adoptProcess(name) {
+  if (allProcesses().includes(name)) return true;
+  try { state.customProcesses.push(validateProcessName(name, allProcesses())); return true; } catch { return false; }
+}
+function addProcess(name) {
+  const clean = validateProcessName(name, allProcesses());
+  state.customProcesses.push(clean); persist();
+  document.querySelectorAll('select[name="process"]').forEach(sel => { const v = sel.value; sel.innerHTML = options(allProcesses(), v); });
+  toast(`Proceso «${clean}» agregado.`);
+  return clean;
+}
+function removeProcess(name) {
+  if (state.rooms.some(r => r.process === name) || state.records.some(r => r.process === name)) return 'No se puede eliminar: hay habitaciones o fotos con este proceso.';
+  state.customProcesses = state.customProcesses.filter(p => p !== name); persist();
+  document.querySelectorAll('select[name="process"]').forEach(sel => { const v = sel.value === name ? processes[0] : sel.value; sel.innerHTML = options(allProcesses(), v); });
+  return '';
+}
+const selectConfig = select => select.name === 'process' ? {onAdd: addProcess, addLabel: 'Agregar proceso', addPlaceholder: 'Ej. Instalación de cielo raso', onRemove: removeProcess, removable: v => state.customProcesses.includes(v)} : {};
+const enhance = root => enhanceSelects(root, selectConfig);
 function editRoom(id) {
   const room = state.rooms.find(r => r.id === id);
   $('#room-dialog').querySelector('.dialog-feedback')?.remove();
   const form = $('#room-form'); form.reset();
   $('#room-form-title').textContent = room ? `Editar habitación ${room.number}` : 'Nueva habitación';
   for (const key of ['id','number','level','notes','status']) form.elements[key].value = room?.[key] || (key === 'status' ? 'Pendiente' : '');
-  form.elements.process.innerHTML = options(processes, room?.process || processes[0]);
+  form.elements.process.innerHTML = options(allProcesses(), room?.process || processes[0]);
   form.elements.worker1.innerHTML = workerOptions(room?.workers[0]);
   form.elements.worker2.innerHTML = workerOptions(room?.workers[1]);
   $('#room-dialog').showModal();
@@ -563,7 +589,7 @@ $('#room-form').addEventListener('submit', event => {
   try {
     const data = Object.fromEntries(new FormData(event.target));
     const existing = state.rooms.find(r => r.id === data.id);
-    const room = validateRoom({...existing,...data,id:data.id || crypto.randomUUID(),workers:[data.worker1,data.worker2],dirty:true,updatedAt:new Date().toISOString()}, state.rooms, workers);
+    const room = validateRoom({...existing,...data,id:data.id || crypto.randomUUID(),workers:[data.worker1,data.worker2],dirty:true,updatedAt:new Date().toISOString()}, state.rooms, workers, allProcesses());
     delete room.worker1; delete room.worker2;
     state.rooms = [...state.rooms.filter(r => r.id !== room.id), room]; persist();
     $('#room-dialog').close(); render();
@@ -580,7 +606,7 @@ async function openRoom(id) {
 }
 function renderDetail() {
   const room = state.rooms.find(r => r.id === activeRoom); if (!room) return;
-  $('#detail-content').innerHTML = `<div class="dialog-heading"><div><p class="eyebrow">${e(room.level)}</p><h2>Habitación ${e(room.number)}</h2></div><button class="icon-button" id="close-detail" aria-label="Cerrar">×</button></div><div class="detail-toolbar"><span class="badge ${statusClass(room.status)}">${e(room.status)}</span><button class="text-button" id="edit-detail">Editar habitación ↗</button><button class="text-button" id="task-detail">Anotar tarea ↗</button>${room.folderId ? `<a class="text-button" href="https://drive.google.com/drive/folders/${e(room.folderId)}" target="_blank" rel="noopener noreferrer">Abrir carpeta ↗</a>` : ''}</div><div class="detail-process"><small>PROCESO ACTUAL</small><h3>${e(room.process)}</h3></div><div class="detail-workers">${room.workers.map(id => `<div>${avatar(id)}<div><small>MAESTRO ENCARGADO</small><strong>${e(workerName(id))}</strong></div></div>`).join('')}</div>${room.notes ? `<p class="room-notes">${e(room.notes)}</p>` : ''}<div class="detail-divider"></div><h3>Nuevo registro fotográfico</h3><form id="photo-form"><div class="form-row"><label>Proceso<select name="process">${options(processes, room.process)}</select></label><label>Momento<select name="stage"><option>Antes</option><option selected>Durante</option><option>Después</option></select></label></div><label>Fecha del registro<input type="date" name="date" required value="${today()}" max="${today()}"></label><label class="upload-zone" id="upload-zone"><span class="upload-symbol">↑</span><strong>Seleccionar fotos del proceso</strong><span>JPG, PNG o WebP · hasta 20 MB por foto</span><input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label><div id="selected-photos" class="selected-photos"></div><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="¿Qué se hizo? ¿Qué falta por resolver?"></textarea></label><div class="dialog-actions"><button type="button" id="pending-upload" class="button secondary" ${uploadBusy || syncing ? 'disabled' : ''}>Subir pendientes</button><button type="submit" class="button primary" ${uploadBusy || syncing ? 'disabled' : ''}>${drive.connected ? 'Guardar y subir fotos' : 'Guardar fotos pendientes'}</button></div><p class="form-note">${drive.connected ? 'Cada foto se marca como subida cuando Google Drive confirma la carga.' : 'Drive no está conectado. Las fotos quedarán pendientes en este dispositivo.'}</p></form><div class="section-heading"><h3>Historial de esta habitación</h3><span class="pill">${state.records.filter(r => r.roomId === room.id).length} registros</span></div><div id="room-gallery" class="gallery"></div>`;
+  $('#detail-content').innerHTML = `<div class="dialog-heading"><div><p class="eyebrow">${e(room.level)}</p><h2>Habitación ${e(room.number)}</h2></div><button class="icon-button" id="close-detail" aria-label="Cerrar">×</button></div><div class="detail-toolbar"><span class="badge ${statusClass(room.status)}">${e(room.status)}</span><button class="text-button" id="edit-detail">Editar habitación ↗</button><button class="text-button" id="task-detail">Anotar tarea ↗</button>${room.folderId ? `<a class="text-button" href="https://drive.google.com/drive/folders/${e(room.folderId)}" target="_blank" rel="noopener noreferrer">Abrir carpeta ↗</a>` : ''}</div><div class="detail-process"><small>PROCESO ACTUAL</small><h3>${e(room.process)}</h3></div><div class="detail-workers">${room.workers.map(id => `<div>${avatar(id)}<div><small>MAESTRO ENCARGADO</small><strong>${e(workerName(id))}</strong></div></div>`).join('')}</div>${room.notes ? `<p class="room-notes">${e(room.notes)}</p>` : ''}<div class="detail-divider"></div><h3>Nuevo registro fotográfico</h3><form id="photo-form"><div class="form-row"><label>Proceso<select name="process">${options(allProcesses(), room.process)}</select></label><label>Momento<select name="stage"><option>Antes</option><option selected>Durante</option><option>Después</option></select></label></div><label>Fecha del registro<input type="date" name="date" required value="${today()}" max="${today()}"></label><label class="upload-zone" id="upload-zone"><span class="upload-symbol">↑</span><strong>Seleccionar fotos del proceso</strong><span>JPG, PNG o WebP · hasta 20 MB por foto</span><input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label><div id="selected-photos" class="selected-photos"></div><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="¿Qué se hizo? ¿Qué falta por resolver?"></textarea></label><div class="dialog-actions"><button type="button" id="pending-upload" class="button secondary" ${uploadBusy || syncing ? 'disabled' : ''}>Subir pendientes</button><button type="submit" class="button primary" ${uploadBusy || syncing ? 'disabled' : ''}>${drive.connected ? 'Guardar y subir fotos' : 'Guardar fotos pendientes'}</button></div><p class="form-note">${drive.connected ? 'Cada foto se marca como subida cuando Google Drive confirma la carga.' : 'Drive no está conectado. Las fotos quedarán pendientes en este dispositivo.'}</p></form><div class="section-heading"><h3>Historial de esta habitación</h3><span class="pill">${state.records.filter(r => r.roomId === room.id).length} registros</span></div><div id="room-gallery" class="gallery"></div>`;
   $('#close-detail').onclick = () => $('#detail-dialog').close();
   $('#edit-detail').onclick = () => editRoom(room.id);
   $('#task-detail').onclick = () => editTask();
@@ -613,6 +639,7 @@ function renderDetail() {
     finally { if (submit.isConnected) submit.disabled = false; }
   };
   renderGallery($('#room-gallery'), state.records.filter(r => r.roomId === room.id));
+  enhance($('#detail-content'));
 }
 async function recordImage(record) {
   if (urls.has(record.id)) return urls.get(record.id);
@@ -661,7 +688,7 @@ async function loadRecords(room) {
   const remote = await drive.records(room);
   const map = new Map(state.records.filter(r => r.roomId === room.id).map(r => [r.id,r]));
   for (const record of remote) {
-    if (!record.id || !processes.includes(record.process) || !Array.isArray(record.workers) || !record.workers.every(id => worker(id)) || !/^\d{4}-\d{2}-\d{2}$/.test(record.date)) continue;
+    if (!record.id || !adoptProcess(record.process) || !Array.isArray(record.workers) || !record.workers.every(id => worker(id)) || !/^\d{4}-\d{2}-\d{2}$/.test(record.date)) continue;
     if (map.get(record.id)?.pending) await blobStore(record.id, 'delete');
     map.set(record.id,record);
   }
@@ -676,7 +703,7 @@ async function synchronize() {
     const remote = await drive.list(state.rootId, 'room');
     for (const folder of remote) {
       let room;
-      try { room = JSON.parse(folder.description); if (!room.id) continue; room = validateRoom(room, [], workers); } catch { continue; }
+      try { room = JSON.parse(folder.description); if (!room.id) continue; adoptProcess(room.process); room = validateRoom(room, [], workers, allProcesses()); } catch { continue; }
       state.rooms = [...state.rooms.filter(r => r.id !== room.id), {...room,folderId:folder.id,dirty:false}];
     }
     for (const room of state.rooms.filter(r => r.folderId)) await loadRecords(room);
@@ -736,7 +763,7 @@ $('#pick-folder').onclick = async () => {
     const checked = await drive.checkFolder(folder.id);
     if (state.rootId !== folder.id) {
       persist();
-      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive','milestones','goals']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
+      if (state.rootId) { const previous = state; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); for (const key of ['tasks','materials','customWorkers','removedWorkers','workerEdits','workerArchive','milestones','goals','customProcesses']) state[key] ||= previous[key]; ensureState(); refreshWorkers(); }
       else { state.rootId = folder.id; state.rootName = checked.name; }
       activeRoom = null; if ($('#detail-dialog').open) $('#detail-dialog').close();
     }
