@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007b';
-import { Drive } from './drive.mjs?v=20261007b';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007b';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007b';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007c';
+import { Drive } from './drive.mjs?v=20261007c';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007c';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007c';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -29,7 +29,7 @@ const urls = new Map();
 const allProcesses = () => [...processes, ...state.customProcesses];
 const worker = id => workers.find(w => w.id === id) || state.workerArchive[id];
 const initials = name => String(name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
-const photoOf = w => w?.photo || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='#efedfb'/><text x='32' y='40' font-family='Arial' font-size='24' font-weight='700' fill='#4d3fc6' text-anchor='middle'>${initials(w?.name).replace(/[<&]/g, '')}</text></svg>`)}`;
+const photoOf = w => w?.photo || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='#f1ede9'/><text x='32' y='40' font-family='Arial' font-size='24' font-weight='700' fill='#6e655e' text-anchor='middle'>${initials(w?.name).replace(/[<&]/g, '')}</text></svg>`)}`;
 const cop = n => new Intl.NumberFormat('es-CO', {style:'currency', currency:'COP', maximumFractionDigits:0}).format(n || 0);
 const workerName = id => worker(id)?.name || 'Responsable pendiente';
 const options = (values, selected) => values.map(v => `<option value="${e(v)}" ${v === selected ? 'selected' : ''}>${e(v)}</option>`).join('');
