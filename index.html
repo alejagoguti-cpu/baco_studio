@@ -4,10 +4,11 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7f4"><meta name="description" content="Baco Studio: seguimiento de habitaciones, equipo de obra y registro fotográfico en Google Drive.">
   <title>BACO STUDIO · Control de obra</title>
-  <link rel="stylesheet" href="styles.css?v=20261007a">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="styles.css?v=20261007b">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script type="module" src="app.mjs?v=20261007a"></script>
+  <script type="module" src="app.mjs?v=20261007b"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -53,7 +54,7 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <a class="brand" href="#inicio" aria-label="Baco Studio inicio"><span class="brand-mark">B</span><span class="brand-name">Baco Studio</span></a>
+      <a class="brand" href="#inicio" aria-label="Baco Studio, ir a Inicio"><img class="brand-logo" src="logo.png" alt="Baco Studio"><span class="brand-name">Control de obra</span></a>
       <button class="collapse-button" id="collapse-sidebar" aria-label="Contraer menú"><svg><use href="#i-left"/></svg></button>
     </div>
     <div class="add-split">
@@ -86,14 +87,7 @@
           <button class="sub-item" data-task-scope="today">Metas de hoy</button>
         </div>
       </div>
-      <div class="nav-group" id="materials-group">
-        <button class="nav-item nav-parent" id="materials-toggle" aria-expanded="false"><svg><use href="#i-box"/></svg><span>Materiales</span><span id="nav-material-count" class="nav-count">0</span><svg class="chev"><use href="#i-chevron"/></svg></button>
-        <div class="subnav">
-          <button class="sub-item" data-material-scope="all">Todos los pedidos</button>
-          <button class="sub-item" data-material-scope="toOrder">Por pedir</button>
-          <button class="sub-item" data-material-scope="owed">Por pagar</button>
-        </div>
-      </div>
+      <button class="nav-item" data-view="materiales" id="materials-toggle"><svg><use href="#i-box"/></svg><span>Materiales</span><span id="nav-material-count" class="nav-count">0</span></button>
       <button class="nav-item" data-view="registro"><svg><use href="#i-camera"/></svg><span>Registro fotográfico</span></button>
       <button class="nav-item" data-view="equipo"><svg><use href="#i-users"/></svg><span>Equipo de obra</span><span class="nav-count" id="nav-team-count">0</span></button>
       <button class="nav-item" data-view="reportes"><svg><use href="#i-chart"/></svg><span>Reportes</span></button>
@@ -113,7 +107,7 @@
         <button class="bell" id="bell" aria-label="Fotos pendientes"><svg><use href="#i-bell"/></svg></button>
         <span class="pending-pill" id="pending-pill" hidden></span>
         <button id="drive-button" class="drive-button"><span class="status-dot"></span><span id="drive-status">Conectar Drive</span></button>
-        <div class="user-chip"><span class="user-mark">B</span><span><strong>Baco Studio</strong><small id="breadcrumb-view">Inicio</small></span></div>
+        <div class="user-chip"><img class="user-mark" src="logo.png" alt=""><span><strong>Baco Studio</strong><small id="breadcrumb-view">Inicio</small></span></div>
       </div>
     </header>
 

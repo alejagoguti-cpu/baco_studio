@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007a';
-import { Drive } from './drive.mjs?v=20261007a';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007a';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007a';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007b';
+import { Drive } from './drive.mjs?v=20261007b';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007b';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007b';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -97,7 +97,6 @@ function setView(next) {
   $('#heading-action').hidden = ['plano','planos','reportes'].includes(next);
   $('#heading-action').lastChild.textContent = {inicio:'Nueva entrega', tareas:'Nueva tarea', materiales:'Nuevo pedido', equipo:'Agregar trabajador'}[next] || 'Nueva habitación';
   $('#materials-toggle').classList.toggle('active', next === 'materiales');
-  if (next === 'materiales') $('#materials-group').classList.add('open');
   $('#tasks-toggle').classList.toggle('active', next === 'tareas');
   if (next === 'tareas') $('#tasks-group').classList.add('open');
   history.replaceState(null, '', `#${next}`);
@@ -329,7 +328,6 @@ function filteredMaterials() {
 function renderMaterials() {
   const toOrder = state.materials.filter(m => m.orderStatus === 'Por pedir').length;
   $('#nav-material-count').textContent = toOrder;
-  document.querySelectorAll('[data-material-scope]').forEach(b => b.classList.toggle('selected', view === 'materiales' && b.dataset.materialScope === materialScope));
   $('#material-bar').hidden = !(view === 'materiales' && materialSelected.size);
   if (view !== 'materiales') return;
   const stats = materialStats(state.materials, monthKey());
@@ -890,8 +888,6 @@ $('#add-worker').onclick = () => editWorker();
 document.querySelectorAll('[data-report]').forEach(b => b.onclick = () => { reportTab = b.dataset.report; render(); });
 $('#report-month').onchange = render;
 $('#report-print').onclick = () => window.print();
-$('#materials-toggle').onclick = () => { const g = $('#materials-group'); if (view !== 'materiales') { g.classList.add('open'); setView('materiales'); } else g.classList.toggle('open'); $('#materials-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
-document.querySelectorAll('[data-material-scope]').forEach(b => b.onclick = () => { materialScope = b.dataset.materialScope; materialPage = 1; if (view !== 'materiales') setView('materiales'); else { closeNav(); render(); } });
 ['#m-order-filter','#m-pay-filter','#m-page-size'].forEach(sel => $(sel).addEventListener('change', () => { materialPage = 1; render(); }));
 $('#m-search').addEventListener('input', () => { materialPage = 1; render(); });
 $('#m-prev').onclick = () => { materialPage--; render(); };
