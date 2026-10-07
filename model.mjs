@@ -30,8 +30,11 @@ export function validateTask(task, rooms, workers) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(task.date || '')) throw new Error('Indica la fecha límite.');
   if (task.time && !/^\d{2}:\d{2}$/.test(task.time)) throw new Error('Indica una hora válida.');
   if (task.roomId && !rooms.some(r => r.id === task.roomId)) throw new Error('La habitación seleccionada no existe.');
-  if (task.workerId && !workers.some(w => w.id === task.workerId)) throw new Error('Selecciona un responsable del equipo.');
-  return {...task, title, notes: String(task.notes ?? '').trim().slice(0, 1000), time: task.time || '', roomId: task.roomId || '', workerId: task.workerId || ''};
+  // Una tarea puede tener varias personas responsables (workerIds); se acepta el formato antiguo workerId.
+  const ids = [...new Set((Array.isArray(task.workerIds) ? task.workerIds : task.workerId ? [task.workerId] : []).filter(Boolean))];
+  if (ids.some(id => !workers.some(w => w.id === id))) throw new Error('Selecciona responsables del equipo.');
+  const {workerId, ...rest} = task;
+  return {...rest, title, notes: String(task.notes ?? '').trim().slice(0, 1000), time: task.time || '', roomId: task.roomId || '', workerIds: ids};
 }
 export const sortTasks = tasks => [...tasks].sort((a, b) => (a.status === 'Completada') - (b.status === 'Completada') || `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`) || priorities.indexOf(a.priority) - priorities.indexOf(b.priority));
 export const orderStatuses = ['Por pedir', 'Pedido', 'Recibido'];

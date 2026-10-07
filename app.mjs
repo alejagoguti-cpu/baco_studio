@@ -1,7 +1,7 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007h';
-import { Drive } from './drive.mjs?v=20261007h';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007h';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007h';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007i';
+import { Drive } from './drive.mjs?v=20261007i';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007i';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007i';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;
@@ -10,7 +10,7 @@ const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
-function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; state.customRoles ||= []; state.customUnits ||= []; state.plans ||= {}; }
+function ensureState() { state.tasks ||= []; state.materials ||= []; state.customWorkers ||= []; state.removedWorkers ||= []; state.workerEdits ||= {}; state.workerArchive ||= {}; state.milestones ||= []; state.goals ||= {}; state.customProcesses ||= []; state.customRoles ||= []; state.tasks.forEach(t => { if (!Array.isArray(t.workerIds)) { t.workerIds = t.workerId ? [t.workerId] : []; delete t.workerId; } }); state.customUnits ||= []; state.plans ||= {}; }
 ensureState();
 let workers = [];
 function refreshWorkers() { workers = [...baseWorkers.filter(w => !state.removedWorkers.includes(w.id)).map(w => ({role:'Personal de obra', ...w, ...(state.workerEdits[w.id] || {})})), ...state.customWorkers]; }
@@ -215,7 +215,7 @@ function filteredTasks() {
   const normalize = v => String(v ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const q = normalize($('#task-search').value.trim());
   const status = $('#task-status-filter').value, priority = $('#task-priority-filter').value;
-  return sortTasks(scopedTasks().filter(t => (status === 'all' || t.status === status) && (priority === 'all' || t.priority === priority) && normalize([t.title, t.notes, state.rooms.find(r => r.id === t.roomId)?.number, workerName(t.workerId)].join(' ')).includes(q)));
+  return sortTasks(scopedTasks().filter(t => (status === 'all' || t.status === status) && (priority === 'all' || t.priority === priority) && normalize([t.title, t.notes, state.rooms.find(r => r.id === t.roomId)?.number, ...(t.workerIds || []).map(workerName)].join(' ')).includes(q)));
 }
 function renderTasks() {
   const open = state.tasks.filter(t => t.status !== 'Completada').length;
@@ -226,9 +226,9 @@ function renderTasks() {
   $('#task-done-count').textContent = scoped.filter(t => t.status === 'Completada').length;
   $('#task-total-count').textContent = scoped.length;
   const tasks = filteredTasks();
-  $('#task-table').innerHTML = tasks.length ? `<div class="room-table-wrap"><table class="room-table task-table"><thead><tr><th><span class="sr-only">Hecha</span></th><th>Tarea</th><th>Estado</th><th>Prioridad</th><th>Habitación</th><th>Responsable</th><th>Fecha límite</th><th></th></tr></thead><tbody>${tasks.map(t => {
+  $('#task-table').innerHTML = tasks.length ? `<div class="room-table-wrap"><table class="room-table task-table"><thead><tr><th><span class="sr-only">Hecha</span></th><th>Tarea</th><th>Estado</th><th>Prioridad</th><th>Habitación</th><th>Responsables</th><th>Fecha límite</th><th></th></tr></thead><tbody>${tasks.map(t => {
     const room = state.rooms.find(r => r.id === t.roomId); const done = t.status === 'Completada'; const cls = taskStatusClass(t.status);
-    return `<tr class="${done ? 'task-done' : ''}"><td><input type="checkbox" class="check" data-task-done="${e(t.id)}" aria-label="Marcar «${e(t.title)}» como completada" ${done ? 'checked' : ''}></td><td><strong class="task-title">${e(t.title)}</strong>${t.notes ? `<small>${e(t.notes)}</small>` : ''}</td><td><span class="status-cell"><span class="status-icon ${cls}">${icon(done ? 'check' : cls === 'active' ? 'sync' : 'clock')}</span>${e(t.status)}</span></td><td><span class="prio ${priorityClass(t.priority)}">${e(t.priority)}</span></td><td>${room ? `<button class="pill" data-task-room="${e(room.id)}">Hab. ${e(room.number)}</button>` : '<span class="muted">—</span>'}</td><td>${t.workerId ? `<span class="task-worker">${avatar(t.workerId)}<span>${e(workerName(t.workerId))}</span></span>` : '<span class="muted">—</span>'}</td><td class="${!done && t.date < today() ? 'overdue' : ''}"><strong>${e(timeLabel(t.time) || 'Sin hora')}</strong><small>${e(dateLabel(t.date + 'T12:00:00-05:00'))}${!done && t.date < today() ? ' · Vencida' : ''}</small></td><td><button class="small-btn" data-task-edit="${e(t.id)}">${icon('edit')}Editar</button></td></tr>`;
+    return `<tr class="${done ? 'task-done' : ''}"><td><input type="checkbox" class="check" data-task-done="${e(t.id)}" aria-label="Marcar «${e(t.title)}» como completada" ${done ? 'checked' : ''}></td><td><strong class="task-title">${e(t.title)}</strong>${t.notes ? `<small>${e(t.notes)}</small>` : ''}</td><td><span class="status-cell"><span class="status-icon ${cls}">${icon(done ? 'check' : cls === 'active' ? 'sync' : 'clock')}</span>${e(t.status)}</span></td><td><span class="prio ${priorityClass(t.priority)}">${e(t.priority)}</span></td><td>${room ? `<button class="pill" data-task-room="${e(room.id)}">Hab. ${e(room.number)}</button>` : '<span class="muted">—</span>'}</td><td>${t.workerIds?.length ? `<span class="task-worker task-crew" title="${e(t.workerIds.map(workerName).join(', '))}"><span class="log-avatars">${t.workerIds.slice(0, 3).map(id => avatar(id)).join('')}</span><span>${e(t.workerIds.length === 1 ? workerName(t.workerIds[0]) : `${workerName(t.workerIds[0]).split(' ')[0]} y ${t.workerIds.length - 1} más`)}</span></span>` : '<span class="muted">—</span>'}</td><td class="${!done && t.date < today() ? 'overdue' : ''}"><strong>${e(timeLabel(t.time) || 'Sin hora')}</strong><small>${e(dateLabel(t.date + 'T12:00:00-05:00'))}${!done && t.date < today() ? ' · Vencida' : ''}</small></td><td><button class="small-btn" data-task-edit="${e(t.id)}">${icon('edit')}Editar</button></td></tr>`;
   }).join('')}</tbody></table></div>` : `<div class="empty-state compact"><div class="empty-icon">${icon('task')}</div><h3>${scoped.length ? 'No hay tareas con esos filtros' : taskScope === 'today' ? 'No tienes tareas para hoy' : 'Anota tu primera asignación'}</h3><p>${scoped.length ? 'Prueba otra búsqueda, estado o prioridad.' : 'Escribe la tarea, su prioridad, el responsable y la hora límite.'}</p>${scoped.length ? '' : `<button class="button primary" id="empty-new-task">${icon('plus')}Nueva tarea</button>`}</div>`;
   $('#empty-new-task')?.addEventListener('click', () => editTask());
   document.querySelectorAll('[data-task-done]').forEach(box => box.onchange = () => {
@@ -245,9 +245,10 @@ function editTask(id) {
   const form = $('#task-form'); form.reset();
   $('#task-form-title').textContent = task ? 'Editar tarea' : 'Nueva tarea';
   form.elements.roomId.innerHTML = '<option value="">Sin habitación</option>' + [...state.rooms].sort((a, b) => a.number.localeCompare(b.number, 'es', {numeric:true})).map(r => `<option value="${e(r.id)}">Hab. ${e(r.number)} · ${e(r.level)}</option>`).join('');
-  form.elements.workerId.innerHTML = '<option value="">Sin responsable</option>' + workers.map(w => `<option value="${w.id}">${e(w.name)}</option>`).join('');
-  const values = task || {id:'', title:'', priority:'Media', status:'Pendiente', date: today(), time:'', roomId: activeRoom && $('#detail-dialog').open ? activeRoom : '', workerId:'', notes:''};
-  for (const key of ['id','title','priority','status','date','time','roomId','workerId','notes']) form.elements[key].value = values[key] || '';
+  const values = task || {id:'', title:'', priority:'Media', status:'Pendiente', date: today(), time:'', roomId: activeRoom && $('#detail-dialog').open ? activeRoom : '', workerIds:[], notes:''};
+  for (const key of ['id','title','priority','status','date','time','roomId','notes']) form.elements[key].value = values[key] || '';
+  const chosen = values.workerIds || [];
+  $('#task-workers').innerHTML = [...new Set([...chosen, ...workers.map(w => w.id)])].filter(id => worker(id)).map(id => `<label class="room-pick worker-pick"><input type="checkbox" value="${e(id)}" ${chosen.includes(id) ? 'checked' : ''}><span>${avatar(id)}${e(workerName(id))}</span></label>`).join('');
   $('#task-delete').hidden = !task; $('#task-delete').dataset.confirm = '';  $('#task-delete').textContent = 'Eliminar';
   $('#task-dialog').showModal();
 }
@@ -256,6 +257,7 @@ $('#task-form').addEventListener('submit', event => {
   try {
     const data = Object.fromEntries(new FormData(event.target));
     const existing = state.tasks.find(t => t.id === data.id);
+    data.workerIds = [...document.querySelectorAll('#task-workers input:checked')].map(i => i.value);
     const task = validateTask({...existing, ...data, id: data.id || crypto.randomUUID(), createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), completedAt: data.status === 'Completada' ? existing?.completedAt || new Date().toISOString() : ''}, state.rooms, workers);
     state.tasks = [...state.tasks.filter(t => t.id !== task.id), task]; persist();
     $('#task-dialog').close();
@@ -464,7 +466,7 @@ function renderReports() {
       <section class="rail-card"><div class="rail-heading"><h3>Gasto por habitación · ${e(monthLabel(month))}</h3></div>${hbars(Object.entries(byRoom).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({label, value})), cop)}</section></div>
       <section class="rail-card"><div class="rail-heading"><h3>Cuentas por proveedor</h3></div>${Object.keys(bySupplier).length ? `<div class="room-table-wrap"><table class="room-table"><thead><tr><th>Proveedor</th><th>Comprado</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${Object.entries(bySupplier).sort((a, b) => (b[1].total - b[1].paid) - (a[1].total - a[1].paid)).map(([name, v]) => `<tr><td><strong>${e(name)}</strong></td><td>${cop(v.total)}</td><td>${cop(v.paid)}</td><td class="${v.total - v.paid ? 'owed' : ''}">${cop(v.total - v.paid)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="rail-empty">Aún no hay pedidos realizados.</p>'}</section>`;
   } else {
-    const rows = workers.map(w => { const rooms = state.rooms.filter(r => r.workers.includes(w.id)); const tasks = state.tasks.filter(t => t.workerId === w.id); const orders = state.materials.filter(m => m.requestedBy === w.id); return {w, rooms: rooms.length, done: rooms.filter(r => r.status === 'Finalizada').length, open: tasks.filter(t => t.status !== 'Completada').length, closed: tasks.filter(t => t.status === 'Completada').length, orders: orders.length, value: orders.reduce((s, m) => s + m.total, 0)}; });
+    const rows = workers.map(w => { const rooms = state.rooms.filter(r => r.workers.includes(w.id)); const tasks = state.tasks.filter(t => (t.workerIds || []).includes(w.id)); const orders = state.materials.filter(m => m.requestedBy === w.id); return {w, rooms: rooms.length, done: rooms.filter(r => r.status === 'Finalizada').length, open: tasks.filter(t => t.status !== 'Completada').length, closed: tasks.filter(t => t.status === 'Completada').length, orders: orders.length, value: orders.reduce((s, m) => s + m.total, 0)}; });
     html = `<div class="report-grid"><section class="rail-card"><div class="rail-heading"><h3>Tareas completadas por persona</h3></div>${hbars(rows.filter(r => r.closed + r.open).sort((a, b) => b.closed - a.closed).map(r => ({label: r.w.name.split(' ').slice(0, 2).join(' '), value: r.closed})), v => `${v}`)}</section><section class="rail-card"><div class="rail-heading"><h3>Habitaciones por persona</h3></div>${hbars(rows.filter(r => r.rooms).sort((a, b) => b.rooms - a.rooms).map(r => ({label: r.w.name.split(' ').slice(0, 2).join(' '), value: r.rooms})), v => `${v}`)}</section></div>
       <section class="rail-card"><div class="rail-heading"><h3>Resumen del equipo</h3><span class="rail-tag">${workers.length} personas</span></div><div class="room-table-wrap"><table class="room-table"><thead><tr><th>Persona</th><th>Habitaciones</th><th>Finalizadas</th><th>Tareas abiertas</th><th>Tareas hechas</th><th>Pedidos</th><th>Valor pedido</th></tr></thead><tbody>${rows.map(r => `<tr><td><span class="task-worker">${avatar(r.w.id)}<span><strong>${e(r.w.name)}</strong><small>${e(r.w.role || '')}</small></span></span></td><td>${r.rooms}</td><td>${r.done}</td><td>${r.open}</td><td>${r.closed}</td><td>${r.orders}</td><td class="nowrap">${cop(r.value)}</td></tr>`).join('')}</tbody></table></div></section>`;
   }
@@ -931,7 +933,7 @@ document.querySelectorAll('[data-task-scope]').forEach(b => b.onclick = () => { 
 ['#task-search','#task-status-filter','#task-priority-filter'].forEach(sel => $(sel).addEventListener(sel === '#task-search' ? 'input' : 'change', render));
 $('#task-export').onclick = () => {
   const csv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const rows = filteredTasks().map(t => [t.title, t.status, t.priority, state.rooms.find(r => r.id === t.roomId)?.number || '', t.workerId ? workerName(t.workerId) : '', t.date, t.time, t.notes].map(csv).join(','));
+  const rows = filteredTasks().map(t => [t.title, t.status, t.priority, state.rooms.find(r => r.id === t.roomId)?.number || '', (t.workerIds || []).map(workerName).join(' / '), t.date, t.time, t.notes].map(csv).join(','));
   const blob = new Blob(['\ufeff' + ['Tarea,Estado,Prioridad,Habitación,Responsable,Fecha,Hora,Notas', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-tareas-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };

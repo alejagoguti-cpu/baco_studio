@@ -768,3 +768,5 @@ body.collapsed .brand-logo{width:44px;height:44px}
 .crew-empty{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:0}
 .crew-empty svg{width:16px;height:16px}
 .crew-note{margin:-4px 0 14px!important}
+.task-crew .log-avatars{display:flex;padding-left:8px}.task-crew .log-avatars .avatar{width:26px;height:26px}
+#task-form .form-row:has(>label:only-child){grid-template-columns:1fr}
