@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {validateRoom,validatePhoto,filterRooms,escapeHTML,safeDriveLink} from '../model.mjs';
 const workers = [{id:'a',name:'Luis Vásquez'},{id:'b',name:'Nicol Castiblanco'}];
 const room = {id:'r',number:'219',level:'Piso 2',workers:['a','b'],process:'Redes eléctricas',status:'En proceso'};
-test('requires exactly two distinct known workers', () => {
-  for (const ids of [['a','a'],['a'],['a','x'],['a','b','a']]) assert.throws(() => validateRoom({...room,workers:ids},[],workers));
+test('encargados fijos opcionales, distintos y conocidos', () => {
+  for (const ids of [['a','a'],['a','x'],['a','b','a']]) assert.throws(() => validateRoom({...room,workers:ids},[],workers));
+  for (const ids of [[],['a']]) assert.doesNotThrow(() => validateRoom({...room,workers:ids},[],workers));
   assert.equal(validateRoom(room,[],workers).number,'219');
 });
 test('prevents duplicate rooms within a sector while allowing different floors', () => {
