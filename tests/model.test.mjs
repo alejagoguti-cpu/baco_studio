@@ -65,3 +65,18 @@ test('validates new workers and prevents duplicates', () => {
   assert.throws(() => validateWorker({id:'n',name:'Al'},workers));
   assert.throws(() => validateWorker({id:'n',name:'Ana Pérez',photo:'javascript:x'},workers));
 });
+import {validateMilestone, validateGoal, daysBetween, nextMilestone} from '../model.mjs';
+test('validates deliveries and daily goals', () => {
+  assert.equal(validateMilestone({name:' Primera entrega ',date:'2026-10-09',roomIds:['r','r']},[room]).roomIds.length,1);
+  assert.throws(() => validateMilestone({name:'',date:'2026-10-09'},[room]));
+  assert.throws(() => validateMilestone({name:'X',date:''},[room]));
+  assert.throws(() => validateMilestone({name:'X',date:'2026-10-09',roomIds:['x']},[room]));
+  assert.equal(validateGoal({date:'2026-10-07',text:'  Terminar enchape piso 2 '}).text,'Terminar enchape piso 2');
+  assert.throws(() => validateGoal({date:'x',text:'a'}));
+});
+test('finds the next open delivery and counts days', () => {
+  assert.equal(daysBetween('2026-10-06','2026-10-09'),3);
+  const ms = [{id:'a',date:'2026-10-20',done:false},{id:'b',date:'2026-10-09',done:false},{id:'c',date:'2026-10-08',done:true},{id:'d',date:'2026-10-01',done:false}];
+  assert.equal(nextMilestone(ms,'2026-10-06').id,'b');
+  assert.equal(nextMilestone([], '2026-10-06'), null);
+});
