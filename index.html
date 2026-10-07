@@ -32,6 +32,9 @@
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-task" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
       <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     </defs>
   </svg>
@@ -46,6 +49,7 @@
       <button class="add-more" id="add-menu-toggle" aria-label="Más acciones" aria-expanded="false"><svg><use href="#i-chevron"/></svg></button>
       <div class="add-menu" id="add-menu" hidden>
         <button data-add-action="room"><svg><use href="#i-room"/></svg>Nueva habitación</button>
+        <button data-add-action="task"><svg><use href="#i-task"/></svg>Nueva tarea</button>
         <button data-add-action="photos"><svg><use href="#i-camera"/></svg>Registrar fotos</button>
         <button data-add-action="drive"><svg><use href="#i-drive"/></svg>Configurar Drive</button>
       </div>
@@ -58,6 +62,13 @@
           <button class="sub-item selected" data-room-mode="cards">Tarjetas</button>
           <button class="sub-item" data-room-mode="list">Lista</button>
           <button class="sub-item" data-room-mode="sectors">Mapa por sector</button>
+        </div>
+      </div>
+      <div class="nav-group" id="tasks-group">
+        <button class="nav-item nav-parent" id="tasks-toggle" aria-expanded="false"><svg><use href="#i-task"/></svg><span>Tareas</span><span id="nav-task-count" class="nav-count">0</span><svg class="chev"><use href="#i-chevron"/></svg></button>
+        <div class="subnav">
+          <button class="sub-item" data-task-scope="all">Tareas asignadas</button>
+          <button class="sub-item" data-task-scope="today">Metas de hoy</button>
         </div>
       </div>
       <button class="nav-item" data-view="registro"><svg><use href="#i-camera"/></svg><span>Registro fotográfico</span></button>
@@ -137,6 +148,27 @@
         </div>
       </section>
 
+      <section id="view-tareas" class="view" hidden>
+        <div class="panel tasks-panel">
+          <div class="panel-heading">
+            <label class="top-search task-search"><svg><use href="#i-search"/></svg><input id="task-search" placeholder="Buscar tarea…" aria-label="Buscar tarea"></label>
+            <div class="panel-tools">
+              <label class="select-pill"><svg><use href="#i-filter"/></svg><select id="task-status-filter" aria-label="Filtrar tareas por estado"><option value="all">Todos los estados</option><option>Pendiente</option><option>En progreso</option><option>Completada</option></select></label>
+              <label class="select-pill"><select id="task-priority-filter" aria-label="Filtrar por prioridad"><option value="all">Toda prioridad</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
+              <button class="small-btn" id="task-export"><svg><use href="#i-download"/></svg>Exportar CSV</button>
+              <div class="task-progress-pill"><strong id="task-done-count">0</strong><span>/<b id="task-total-count">0</b></span><small>Tareas<br>completadas</small></div>
+            </div>
+          </div>
+          <div id="task-table"></div>
+        </div>
+        <div class="task-cards">
+          <div class="progress-card"><small>Tareas completadas hoy</small><strong id="task-today-percent">0%</strong><span id="task-today-date"></span></div>
+          <div class="praise-card"><p id="task-praise">Anota tus asignaciones del día y márcalas al terminarlas.</p><button class="praise-button" id="task-praise-new">Nueva tarea <svg><use href="#i-arrow"/></svg></button></div>
+          <div class="rail-card target-card"><div class="rail-heading"><h3><svg><use href="#i-target"/></svg>Meta de hoy</h3><button class="more" id="target-open" aria-label="Ver metas de hoy"><svg><use href="#i-arrow"/></svg></button></div><div id="task-targets"></div></div>
+          <button class="plan-card quick-card" id="task-quick"><div class="plan-text"><span class="plan-icons"><span><svg><use href="#i-task"/></svg></span><span><svg><use href="#i-edit"/></svg></span></span><h2>Registro rápido<br>de asignaciones</h2><p>Anota una tarea, su prioridad, responsable y hora límite en segundos.</p><span class="plan-cta">Anotar tarea <svg><use href="#i-arrow"/></svg></span></div></button>
+        </div>
+      </section>
+
       <section id="view-registro" class="view" hidden>
         <div class="panel"><div class="panel-heading"><div><h2>Registro fotográfico</h2><p class="panel-sub">Selecciona una habitación para registrar su proceso. Las fotos pendientes se conservan en este dispositivo hasta subirlas.</p></div><button class="button secondary" id="sync-button"><svg><use href="#i-sync"/></svg>Actualizar desde Drive</button></div><div id="global-gallery" class="gallery"></div></div>
       </section>
@@ -156,6 +188,7 @@
 
   <div class="selection-bar" id="selection-bar" hidden><span><b id="selection-count">0</b> seleccionadas</span><button id="selection-export"><svg><use href="#i-download"/></svg>Exportar CSV</button><button id="selection-clear">Limpiar</button></div>
 
+  <dialog id="task-dialog"><form id="task-form"><div class="dialog-heading"><div><p class="eyebrow">MIS ASIGNACIONES</p><h2 id="task-form-title">Nueva tarea</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><label>Tarea<input name="title" required maxlength="140" placeholder="Ej. Revisar enchape del baño"></label><div class="form-row"><label>Prioridad<select name="priority"><option>Alta</option><option selected>Media</option><option>Baja</option></select></label><label>Estado<select name="status"><option>Pendiente</option><option>En progreso</option><option>Completada</option></select></label></div><div class="form-row"><label>Fecha límite<input type="date" name="date" required></label><label>Hora límite<input type="time" name="time"></label></div><div class="form-row"><label>Habitación<select name="roomId"></select></label><label>Responsable<select name="workerId"></select></label></div><label>Notas<textarea name="notes" maxlength="1000" placeholder="Detalles, materiales o pendientes"></textarea></label><p class="form-note">Las tareas se guardan en este dispositivo y se incluyen en «Exportar respaldo».</p><div class="dialog-actions"><button type="button" class="button secondary danger" id="task-delete" hidden>Eliminar</button><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar tarea</button></div></form></dialog>
   <dialog id="room-dialog"><form id="room-form"><div class="dialog-heading"><div><p class="eyebrow">ORGANIZACIÓN DE OBRA</p><h2 id="room-form-title">Nueva habitación</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><input type="hidden" name="id"><div class="form-row"><label>Habitación<input name="number" required maxlength="30" placeholder="Ej. 219"></label><label>Piso o sector<input name="level" required maxlength="60" placeholder="Ej. Segundo piso"></label></div><label>Proceso de obra<select name="process" id="room-process" required></select></label><div class="form-row"><label>Maestro encargado 1<select name="worker1" required></select></label><label>Maestro encargado 2<select name="worker2" required></select></label></div><label>Estado<select name="status"><option>Pendiente</option><option>En proceso</option><option>En revisión</option><option>Finalizada</option></select></label><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="Alcance, pendientes o indicaciones para el equipo"></textarea></label><p class="form-note">Las asignaciones se guardan en este dispositivo. Al sincronizar, también se guardan en la carpeta de Drive del proyecto.</p><div class="dialog-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary" type="submit">Guardar habitación</button></div></form></dialog>
   <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
   <dialog id="drive-dialog"><form id="drive-form"><div class="dialog-heading"><div><p class="eyebrow">ARCHIVO DEL PROYECTO</p><h2>Google Drive</h2></div><button type="button" class="icon-button" data-close aria-label="Cerrar">×</button></div><p>Las fotos se organizan en <strong>Proyecto → Habitación → Proceso</strong>. Cada foto conserva fecha, responsables y observaciones.</p><label>ID de cliente de Google<input name="clientId" required placeholder="…apps.googleusercontent.com" autocomplete="off"></label><details><summary>Vincular una carpeta existente</summary><p class="form-note">Para seleccionar una carpeta compartida, configura Google Picker con una clave de API y el número de proyecto del mismo proyecto de Google Cloud.</p><label>Clave de API de Google Picker<input name="apiKey" autocomplete="off"></label><label>Número del proyecto de Google Cloud<input name="appId" inputmode="numeric"></label></details><div class="connection-info" id="connection-info"></div><p class="form-note">Si todavía no tienes la configuración, puedes organizar habitaciones y guardar fotos pendientes. Necesitas una cuenta de Google con permiso de edición para subir al Drive.</p><div class="dialog-actions"><button type="button" class="button secondary" id="disconnect-button">Desconectar</button><button class="button primary" type="submit">Guardar y conectar</button></div><button type="button" class="text-button" id="pick-folder">Seleccionar carpeta de Drive ↗</button></form></dialog>

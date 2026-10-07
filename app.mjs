@@ -1,13 +1,15 @@
 import { workers, plan } from './assets.mjs';
 import { Drive } from './drive.mjs';
-import { processes, statuses, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs';
 
 const $ = selector => document.querySelector(selector);
 const drive = new Drive();
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 let config = read('baco.config', {});
 let state = read('baco.state', {rooms:[], records:[], rootId:'', rootName:''});
+state.tasks ||= [];
 let activeRoom = null;
+let taskScope = 'all';
 let view = 'habitaciones';
 let roomMode = 'cards';
 let syncing = false;
@@ -68,14 +70,17 @@ function setRoomMode(mode) {
 function closeNav() { document.body.classList.remove('nav-open'); $('#scrim').hidden = true; }
 function setView(next) {
   view = next;
-  const titles = {habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
+  const titles = {tareas:['Tus tareas asignadas', 'Anótalas y complétalas para mantener la obra al día.', 'Tareas'], habitaciones:['Resumen de obra', 'Consulta las habitaciones, asigna responsables y documenta los procesos.', 'Habitaciones'], registro:['Registro fotográfico', 'Consulta los procesos y las evidencias de cada habitación.', 'Registro fotográfico'], equipo:['Equipo de obra', 'Monitorea al personal, sus asignaciones y el avance de sus habitaciones.', 'Equipo de obra'], plano:['Planta del proyecto', 'Consulta el plano original para orientar el seguimiento.', 'Planta de referencia']};
   const title = titles[next]; if (!title) return;
   $('#page-title').textContent = title[0]; $('#page-subtitle').textContent = title[1]; $('#breadcrumb-view').textContent = title[2];
   document.querySelectorAll('.view').forEach(el => el.hidden = el.id !== `view-${next}`);
   document.querySelectorAll('[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === next));
   $('#rooms-toggle').classList.toggle('active', next === 'habitaciones');
-  $('#overview').hidden = next === 'plano';
+  $('#overview').hidden = next === 'plano' || next === 'tareas';
   $('#heading-action').hidden = next === 'plano';
+  $('#heading-action').lastChild.textContent = next === 'tareas' ? 'Nueva tarea' : 'Nueva habitación';
+  $('#tasks-toggle').classList.toggle('active', next === 'tareas');
+  if (next === 'tareas') $('#tasks-group').classList.add('open');
   history.replaceState(null, '', `#${next}`);
   closeNav();
   render();
@@ -158,7 +163,81 @@ function render() {
   }).join('');
   document.querySelectorAll('[data-team-room]').forEach(button => button.addEventListener('click', () => openRoom(button.dataset.teamRoom)));
   if (view === 'registro') renderGallery($('#global-gallery'), state.records);
+  renderTasks();
 }
+
+const priorityClass = p => ({Alta:'n0', Media:'n1', Baja:'n2'}[p] || 'n1');
+const taskStatusClass = s => ({'Pendiente':'pending', 'En progreso':'active', 'Completada':'done'}[s] || 'pending');
+const timeLabel = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${String((h % 12) || 12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h < 12 ? 'a. m.' : 'p. m.'}`; };
+function scopedTasks() { return taskScope === 'today' ? state.tasks.filter(t => t.date === today()) : state.tasks; }
+function filteredTasks() {
+  const normalize = v => String(v ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const q = normalize($('#task-search').value.trim());
+  const status = $('#task-status-filter').value, priority = $('#task-priority-filter').value;
+  return sortTasks(scopedTasks().filter(t => (status === 'all' || t.status === status) && (priority === 'all' || t.priority === priority) && normalize([t.title, t.notes, state.rooms.find(r => r.id === t.roomId)?.number, workerName(t.workerId)].join(' ')).includes(q)));
+}
+function renderTasks() {
+  document.querySelectorAll('.sub-item[data-room-mode]').forEach(b => b.classList.toggle('selected', view === 'habitaciones' && b.dataset.roomMode === roomMode));
+  const open = state.tasks.filter(t => t.status !== 'Completada').length;
+  $('#nav-task-count').textContent = open;
+  document.querySelectorAll('[data-task-scope]').forEach(b => b.classList.toggle('selected', view === 'tareas' && b.dataset.taskScope === taskScope));
+  if (view !== 'tareas') return;
+  const scoped = scopedTasks();
+  $('#task-done-count').textContent = scoped.filter(t => t.status === 'Completada').length;
+  $('#task-total-count').textContent = scoped.length;
+  const tasks = filteredTasks();
+  $('#task-table').innerHTML = tasks.length ? `<div class="room-table-wrap"><table class="room-table task-table"><thead><tr><th><span class="sr-only">Hecha</span></th><th>Tarea</th><th>Estado</th><th>Prioridad</th><th>Habitación</th><th>Responsable</th><th>Fecha límite</th><th></th></tr></thead><tbody>${tasks.map(t => {
+    const room = state.rooms.find(r => r.id === t.roomId); const done = t.status === 'Completada'; const cls = taskStatusClass(t.status);
+    return `<tr class="${done ? 'task-done' : ''}"><td><input type="checkbox" class="check" data-task-done="${e(t.id)}" aria-label="Marcar «${e(t.title)}» como completada" ${done ? 'checked' : ''}></td><td><strong class="task-title">${e(t.title)}</strong>${t.notes ? `<small>${e(t.notes)}</small>` : ''}</td><td><span class="status-cell"><span class="status-icon ${cls}">${icon(done ? 'check' : cls === 'active' ? 'sync' : 'clock')}</span>${e(t.status)}</span></td><td><span class="prio ${priorityClass(t.priority)}">${e(t.priority)}</span></td><td>${room ? `<button class="pill" data-task-room="${e(room.id)}">Hab. ${e(room.number)}</button>` : '<span class="muted">—</span>'}</td><td>${t.workerId ? `<span class="task-worker">${avatar(t.workerId)}<span>${e(workerName(t.workerId))}</span></span>` : '<span class="muted">—</span>'}</td><td class="${!done && t.date < today() ? 'overdue' : ''}"><strong>${e(timeLabel(t.time) || 'Sin hora')}</strong><small>${e(dateLabel(t.date + 'T12:00:00-05:00'))}${!done && t.date < today() ? ' · Vencida' : ''}</small></td><td><button class="small-btn" data-task-edit="${e(t.id)}">${icon('edit')}Editar</button></td></tr>`;
+  }).join('')}</tbody></table></div>` : `<div class="empty-state compact"><div class="empty-icon">${icon('task')}</div><h3>${scoped.length ? 'No hay tareas con esos filtros' : taskScope === 'today' ? 'No tienes tareas para hoy' : 'Anota tu primera asignación'}</h3><p>${scoped.length ? 'Prueba otra búsqueda, estado o prioridad.' : 'Escribe la tarea, su prioridad, el responsable y la hora límite.'}</p>${scoped.length ? '' : `<button class="button primary" id="empty-new-task">${icon('plus')}Nueva tarea</button>`}</div>`;
+  $('#empty-new-task')?.addEventListener('click', () => editTask());
+  document.querySelectorAll('[data-task-done]').forEach(box => box.onchange = () => {
+    const task = state.tasks.find(t => t.id === box.dataset.taskDone);
+    task.status = box.checked ? 'Completada' : 'Pendiente'; task.completedAt = box.checked ? new Date().toISOString() : ''; task.updatedAt = new Date().toISOString();
+    persist(); render();
+  });
+  document.querySelectorAll('[data-task-edit]').forEach(b => b.onclick = () => editTask(b.dataset.taskEdit));
+  document.querySelectorAll('[data-task-room]').forEach(b => b.onclick = () => openRoom(b.dataset.taskRoom));
+  const todays = state.tasks.filter(t => t.date === today());
+  const doneToday = todays.filter(t => t.status === 'Completada').length;
+  $('#task-today-percent').textContent = `${todays.length ? Math.round(doneToday / todays.length * 100) : 0}%`;
+  $('#task-today-date').textContent = dateLabel(new Date().toISOString());
+  $('#task-praise').textContent = !todays.length ? 'Anota tus asignaciones del día y márcalas al terminarlas.' : doneToday === todays.length ? '¡Buen trabajo! Completaste todas las tareas de hoy.' : `Te ${todays.length - doneToday === 1 ? 'queda 1 tarea' : `quedan ${todays.length - doneToday} tareas`} por completar hoy.`;
+  $('#task-targets').innerHTML = priorities.map(p => {
+    const list = todays.filter(t => t.priority === p); const done = list.filter(t => t.status === 'Completada').length;
+    return `<div class="target-row"><div><strong>${done}</strong><span>/${list.length}</span><small>Prioridad ${e(p.toLowerCase())}</small></div><div class="target-track"><span class="${priorityClass(p)}" style="width:${list.length ? done / list.length * 100 : 0}%"></span></div></div>`;
+  }).join('');
+}
+function editTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  $('#task-dialog').querySelector('.dialog-feedback')?.remove();
+  const form = $('#task-form'); form.reset();
+  $('#task-form-title').textContent = task ? 'Editar tarea' : 'Nueva tarea';
+  form.elements.roomId.innerHTML = '<option value="">Sin habitación</option>' + [...state.rooms].sort((a, b) => a.number.localeCompare(b.number, 'es', {numeric:true})).map(r => `<option value="${e(r.id)}">Hab. ${e(r.number)} · ${e(r.level)}</option>`).join('');
+  form.elements.workerId.innerHTML = '<option value="">Sin responsable</option>' + workers.map(w => `<option value="${w.id}">${e(w.name)}</option>`).join('');
+  const values = task || {id:'', title:'', priority:'Media', status:'Pendiente', date: today(), time:'', roomId: activeRoom && $('#detail-dialog').open ? activeRoom : '', workerId:'', notes:''};
+  for (const key of ['id','title','priority','status','date','time','roomId','workerId','notes']) form.elements[key].value = values[key] || '';
+  $('#task-delete').hidden = !task; $('#task-delete').dataset.confirm = '';  $('#task-delete').textContent = 'Eliminar';
+  $('#task-dialog').showModal();
+}
+$('#task-form').addEventListener('submit', event => {
+  event.preventDefault();
+  try {
+    const data = Object.fromEntries(new FormData(event.target));
+    const existing = state.tasks.find(t => t.id === data.id);
+    const task = validateTask({...existing, ...data, id: data.id || crypto.randomUUID(), createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), completedAt: data.status === 'Completada' ? existing?.completedAt || new Date().toISOString() : ''}, state.rooms, workers);
+    state.tasks = [...state.tasks.filter(t => t.id !== task.id), task]; persist();
+    $('#task-dialog').close();
+    if (view !== 'tareas') setView('tareas'); else render();
+    toast(existing ? 'Tarea actualizada.' : 'Tarea anotada.');
+  } catch (error) { errorToast(error); }
+});
+$('#task-delete').onclick = () => {
+  const button = $('#task-delete');
+  if (!button.dataset.confirm) { button.dataset.confirm = '1'; button.textContent = '¿Eliminar? Confirmar'; return; }
+  const id = $('#task-form').elements.id.value;
+  state.tasks = state.tasks.filter(t => t.id !== id); persist(); $('#task-dialog').close(); render(); toast('Tarea eliminada.');
+};
 function editRoom(id) {
   const room = state.rooms.find(r => r.id === id);
   $('#room-dialog').querySelector('.dialog-feedback')?.remove();
@@ -192,9 +271,10 @@ async function openRoom(id) {
 }
 function renderDetail() {
   const room = state.rooms.find(r => r.id === activeRoom); if (!room) return;
-  $('#detail-content').innerHTML = `<div class="dialog-heading"><div><p class="eyebrow">${e(room.level)}</p><h2>Habitación ${e(room.number)}</h2></div><button class="icon-button" id="close-detail" aria-label="Cerrar">×</button></div><div class="detail-toolbar"><span class="badge ${statusClass(room.status)}">${e(room.status)}</span><button class="text-button" id="edit-detail">Editar habitación ↗</button>${room.folderId ? `<a class="text-button" href="https://drive.google.com/drive/folders/${e(room.folderId)}" target="_blank" rel="noopener noreferrer">Abrir carpeta ↗</a>` : ''}</div><div class="detail-process"><small>PROCESO ACTUAL</small><h3>${e(room.process)}</h3></div><div class="detail-workers">${room.workers.map(id => `<div>${avatar(id)}<div><small>MAESTRO ENCARGADO</small><strong>${e(workerName(id))}</strong></div></div>`).join('')}</div>${room.notes ? `<p class="room-notes">${e(room.notes)}</p>` : ''}<div class="detail-divider"></div><h3>Nuevo registro fotográfico</h3><form id="photo-form"><div class="form-row"><label>Proceso<select name="process">${options(processes, room.process)}</select></label><label>Momento<select name="stage"><option>Antes</option><option selected>Durante</option><option>Después</option></select></label></div><label>Fecha del registro<input type="date" name="date" required value="${today()}" max="${today()}"></label><label class="upload-zone" id="upload-zone"><span class="upload-symbol">↑</span><strong>Seleccionar fotos del proceso</strong><span>JPG, PNG o WebP · hasta 20 MB por foto</span><input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label><div id="selected-photos" class="selected-photos"></div><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="¿Qué se hizo? ¿Qué falta por resolver?"></textarea></label><div class="dialog-actions"><button type="button" id="pending-upload" class="button secondary" ${uploadBusy || syncing ? 'disabled' : ''}>Subir pendientes</button><button type="submit" class="button primary" ${uploadBusy || syncing ? 'disabled' : ''}>${drive.connected ? 'Guardar y subir fotos' : 'Guardar fotos pendientes'}</button></div><p class="form-note">${drive.connected ? 'Cada foto se marca como subida cuando Google Drive confirma la carga.' : 'Drive no está conectado. Las fotos quedarán pendientes en este dispositivo.'}</p></form><div class="section-heading"><h3>Historial de esta habitación</h3><span class="pill">${state.records.filter(r => r.roomId === room.id).length} registros</span></div><div id="room-gallery" class="gallery"></div>`;
+  $('#detail-content').innerHTML = `<div class="dialog-heading"><div><p class="eyebrow">${e(room.level)}</p><h2>Habitación ${e(room.number)}</h2></div><button class="icon-button" id="close-detail" aria-label="Cerrar">×</button></div><div class="detail-toolbar"><span class="badge ${statusClass(room.status)}">${e(room.status)}</span><button class="text-button" id="edit-detail">Editar habitación ↗</button><button class="text-button" id="task-detail">Anotar tarea ↗</button>${room.folderId ? `<a class="text-button" href="https://drive.google.com/drive/folders/${e(room.folderId)}" target="_blank" rel="noopener noreferrer">Abrir carpeta ↗</a>` : ''}</div><div class="detail-process"><small>PROCESO ACTUAL</small><h3>${e(room.process)}</h3></div><div class="detail-workers">${room.workers.map(id => `<div>${avatar(id)}<div><small>MAESTRO ENCARGADO</small><strong>${e(workerName(id))}</strong></div></div>`).join('')}</div>${room.notes ? `<p class="room-notes">${e(room.notes)}</p>` : ''}<div class="detail-divider"></div><h3>Nuevo registro fotográfico</h3><form id="photo-form"><div class="form-row"><label>Proceso<select name="process">${options(processes, room.process)}</select></label><label>Momento<select name="stage"><option>Antes</option><option selected>Durante</option><option>Después</option></select></label></div><label>Fecha del registro<input type="date" name="date" required value="${today()}" max="${today()}"></label><label class="upload-zone" id="upload-zone"><span class="upload-symbol">↑</span><strong>Seleccionar fotos del proceso</strong><span>JPG, PNG o WebP · hasta 20 MB por foto</span><input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label><div id="selected-photos" class="selected-photos"></div><label>Observaciones<textarea name="notes" maxlength="1000" placeholder="¿Qué se hizo? ¿Qué falta por resolver?"></textarea></label><div class="dialog-actions"><button type="button" id="pending-upload" class="button secondary" ${uploadBusy || syncing ? 'disabled' : ''}>Subir pendientes</button><button type="submit" class="button primary" ${uploadBusy || syncing ? 'disabled' : ''}>${drive.connected ? 'Guardar y subir fotos' : 'Guardar fotos pendientes'}</button></div><p class="form-note">${drive.connected ? 'Cada foto se marca como subida cuando Google Drive confirma la carga.' : 'Drive no está conectado. Las fotos quedarán pendientes en este dispositivo.'}</p></form><div class="section-heading"><h3>Historial de esta habitación</h3><span class="pill">${state.records.filter(r => r.roomId === room.id).length} registros</span></div><div id="room-gallery" class="gallery"></div>`;
   $('#close-detail').onclick = () => $('#detail-dialog').close();
   $('#edit-detail').onclick = () => editRoom(room.id);
+  $('#task-detail').onclick = () => editTask();
   $('#pending-upload').onclick = () => uploadPending(room.id).catch(errorToast);
   $('#photo-input').onchange = event => {
     $('#selected-photos').textContent = Array.from(event.target.files).map(f => f.name).join(' · ');
@@ -347,7 +427,7 @@ $('#pick-folder').onclick = async () => {
     const checked = await drive.checkFolder(folder.id);
     if (state.rootId !== folder.id) {
       persist();
-      if (state.rootId) state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name});
+      if (state.rootId) { const tasks = state.tasks; state = read(`baco.project.${folder.id}`, {rooms:[],records:[],rootId:folder.id,rootName:checked.name}); state.tasks ||= tasks; }
       else { state.rootId = folder.id; state.rootName = checked.name; }
       activeRoom = null; if ($('#detail-dialog').open) $('#detail-dialog').close();
     }
@@ -355,7 +435,19 @@ $('#pick-folder').onclick = async () => {
   } catch (error) { errorToast(error); }
 };
 $('#sync-button').onclick = () => synchronize().catch(errorToast);
-$('#new-room').onclick = $('#heading-action').onclick = $('#praise-new').onclick = () => editRoom();
+$('#new-room').onclick = $('#praise-new').onclick = () => editRoom();
+$('#heading-action').onclick = () => view === 'tareas' ? editTask() : editRoom();
+$('#task-praise-new').onclick = $('#task-quick').onclick = () => editTask();
+$('#target-open').onclick = () => { taskScope = 'today'; render(); };
+$('#tasks-toggle').onclick = () => { const g = $('#tasks-group'); if (view !== 'tareas') { g.classList.add('open'); setView('tareas'); } else g.classList.toggle('open'); $('#tasks-toggle').setAttribute('aria-expanded', String(g.classList.contains('open'))); };
+document.querySelectorAll('[data-task-scope]').forEach(b => b.onclick = () => { taskScope = b.dataset.taskScope; if (view !== 'tareas') setView('tareas'); else { closeNav(); render(); } });
+['#task-search','#task-status-filter','#task-priority-filter'].forEach(sel => $(sel).addEventListener(sel === '#task-search' ? 'input' : 'change', render));
+$('#task-export').onclick = () => {
+  const csv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = filteredTasks().map(t => [t.title, t.status, t.priority, state.rooms.find(r => r.id === t.roomId)?.number || '', t.workerId ? workerName(t.workerId) : '', t.date, t.time, t.notes].map(csv).join(','));
+  const blob = new Blob(['\ufeff' + ['Tarea,Estado,Prioridad,Habitación,Responsable,Fecha,Hora,Notas', ...rows].join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `baco-studio-tareas-${today()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 $('#drive-button').onclick = $('#rail-connect').onclick = $('#sidebar-drive').onclick = openDriveSettings;
 $('#bell').onclick = () => setView('registro');
 const addMenu = $('#add-menu');
@@ -366,6 +458,7 @@ document.querySelectorAll('[data-add-action]').forEach(button => button.onclick 
   const action = button.dataset.addAction;
   if (action === 'room') editRoom();
   else if (action === 'drive') openDriveSettings();
+  else if (action === 'task') editTask();
   else if (state.rooms.length) { setView('habitaciones'); setRoomMode('cards'); render(); toast('Abre una habitación con «Fotos» para registrar su proceso.'); }
   else toast('Primero crea una habitación para registrar sus fotos.');
 });
@@ -402,4 +495,4 @@ $('#export-button').onclick = () => {
   toast('Respaldo de habitaciones y metadatos exportado. Las fotos pendientes permanecen en este dispositivo.');
 };
 setInterval(() => { if (!drive.connected && $('#drive-button').classList.contains('connected')) render(); }, 30000);
-setView(['habitaciones','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'habitaciones');
+setView(['habitaciones','tareas','registro','equipo','plano'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'habitaciones');

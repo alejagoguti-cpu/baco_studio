@@ -21,6 +21,8 @@ También puede alojarse como web estática en HTTPS, conservando la estructura d
 
 ## Uso
 
+- **Tareas → Tareas asignadas**: anota tus asignaciones con prioridad (alta, media, baja), estado, fecha y hora límite, habitación y responsable. Márcalas con la casilla al terminarlas; «Metas de hoy» filtra las del día y muestra el avance por prioridad. Se guardan en este dispositivo, se incluyen en «Exportar respaldo» y se pueden exportar a CSV (no se sincronizan con Drive).
+
 1. Crea una habitación indicando número, sector, proceso y exactamente dos integrantes diferentes del equipo.
 2. Abre la tarjeta para registrar fotos con fecha, momento (antes/durante/después), proceso y observaciones.
 3. Sin Drive, las fotografías quedan **pendientes en este dispositivo** en IndexedDB. No se reportan como subidas.
