@@ -1,9 +1,9 @@
-import { workers as baseWorkers, plan } from './assets.mjs?v=20261007m';
-import { Drive } from './drive.mjs?v=20261007m';
-import { enhanceSelects, syncSelects } from './select.mjs?v=20261007m';
-import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007m';
-import { createSync } from './sync.mjs?v=20261007m';
-import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007m';
+import { workers as baseWorkers, plan } from './assets.mjs?v=20261007n';
+import { Drive } from './drive.mjs?v=20261007n';
+import { enhanceSelects, syncSelects } from './select.mjs?v=20261007n';
+import { initAuth, getToken, currentEmail } from './auth.mjs?v=20261007n';
+import { createSync } from './sync.mjs?v=20261007n';
+import { processes, statuses, taskStatuses, priorities, validateTask, sortTasks, orderStatuses, paymentStatuses, paymentStatus, balance, parseMoney, validateMaterial, materialStats, validateWorker, validateMilestone, validateProcessName, validateGoal, validateActivity, upsertActivity, roles, validateRoleName, activityOn, lastActivity, daysBetween, nextMilestone, validateRoom, validatePhoto, filterRooms, escapeHTML as e, dateLabel, safeDriveLink } from './model.mjs?v=20261007n';
 
 const $ = selector => document.querySelector(selector);
 const nativeShowModal = HTMLDialogElement.prototype.showModal;

@@ -6,6 +6,20 @@ export const SUPABASE_KEY = 'sb_publishable_HYlV1s3Gjs2fuYKhLJWzDw_e4VsasgB';
 
 const LISTS = ['rooms', 'tasks', 'materials', 'milestones', 'customWorkers', 'records'];
 const SETTINGS = ['goals', 'customProcesses', 'customRoles', 'customUnits', 'removedWorkers', 'workerEdits', 'workerArchive'];
+const JOIN_FLAG = 'baco.cloud.joined.zhkmykhsyhznkpakvbdj';
+// Al entrar por primera vez desde un dispositivo: la nube manda, pero lo que solo existe en el dispositivo se agrega.
+export function joinFirstTime(remote, local, firstTime) {
+  const merged = new Map(remote);
+  if (!firstTime) return merged;
+  for (const [k, v] of local) {
+    if (!merged.has(k)) { merged.set(k, v); continue; }
+    if (!k.startsWith('settings\u0000')) continue;
+    const r = JSON.parse(merged.get(k)), l = JSON.parse(v);
+    if (Array.isArray(r) && Array.isArray(l)) merged.set(k, JSON.stringify([...new Set([...r, ...l].map(x => JSON.stringify(x)))].map(x => JSON.parse(x))));
+    else if (r && l && typeof r === 'object' && typeof l === 'object') merged.set(k, JSON.stringify({...l, ...r}));
+  }
+  return merged;
+}
 const key = (collection, id) => `${collection}\u0000${id}`;
 
 // Convierte el estado de la app en un mapa «colección+id» → JSON del elemento.
@@ -70,15 +84,15 @@ export function createSync({getToken, getState, setState, onStatus, onError, who
       if (!team.length) { status('no-access'); return false; }
       remote = await fetchAll();
       const local = toItems(getState());
-      if (!remote.size && local.size) {
-        synced = new Map(); enabled = true; await flush(); // primera vez: subir lo que hay en este dispositivo
-      } else {
-        if (local.size && [...local].some(([k, v]) => remote.get(k) !== v)) {
-          try { localStorage.setItem('baco.state.backup', JSON.stringify({savedAt: new Date().toISOString(), state: getState()})); } catch {}
-        }
-        synced = new Map(remote); enabled = true;
-        setState(fromItems(remote, getState()));
+      if (local.size && [...local].some(([k, v]) => remote.get(k) !== v)) {
+        try { localStorage.setItem('baco.state.backup', JSON.stringify({savedAt: new Date().toISOString(), state: getState()})); } catch {}
       }
+      // Primera vez de este dispositivo en la nube: se suma lo que solo existe aquí (no se pierde nada).
+      const merged = joinFirstTime(remote, local, localStorage.getItem(JOIN_FLAG) !== '1');
+      synced = new Map(remote); enabled = true;
+      setState(fromItems(merged, getState()));
+      try { localStorage.setItem(JOIN_FLAG, '1'); } catch {}
+      if (merged.size !== remote.size || [...merged].some(([k, v]) => remote.get(k) !== v)) await flush();
       subscribe();
       addEventListener('online', () => schedule(0));
       status('saved');
