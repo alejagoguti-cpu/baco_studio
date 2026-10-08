@@ -1,6 +1,6 @@
 # Baco Studio · Control de obra
 
-Web responsive en español para organizar habitaciones con una **bitácora diaria rotativa** (quién trabaja en cada habitación cada día), consultar el personal suministrado, registrar procesos y cargar evidencia fotográfica en Google Drive. Diseño inspirado en el dashboard «Ware Sync» de la referencia de Behance: fondo crema, menú lateral con submenús y botón naranja, buscador superior, KPIs con mini barras, contador de estados en índigo, vista de lista con selección y exportación CSV, mapa por sector con fichas de color y tarjetas de equipo. La planta suministrada se conserva sin modificaciones. No se inventan números ni asignaciones.
+Web responsive en español para organizar habitaciones con una **bitácora diaria rotativa** (quién trabaja en cada habitación cada día), consultar el personal suministrado, registrar procesos y cargar evidencia fotográfica en Google Drive.
 
 ## Ejecutar
 
